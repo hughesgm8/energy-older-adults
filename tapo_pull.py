@@ -39,8 +39,10 @@ async def fetch_device_data(client, ip_address, device_id: str) -> Dict[str, Any
         }
     
     except Exception as e:
-        print(f"Could not fetch real device data: {e}. Using mock data.")
-        # Return mock data if real device is unreachable
+        # Log to stderr instead of stdout
+        import sys
+        print(f"Could not fetch real device data: {e}. Using mock data.", file=sys.stderr)
+        
         return {
             "device_info": {
                 "device_id": device_id,
@@ -49,11 +51,11 @@ async def fetch_device_data(client, ip_address, device_id: str) -> Dict[str, Any
                 "model": "P110",
             },
             "hourly": {
-                "data": [0.1 * i for i in range(24)],  # Mock hourly data
+                "data": [0.1 * i for i in range(24)],
                 "time_stamp": datetime.now().isoformat(),
             },
             "daily": {
-                "data": [0.5 * i for i in range(30)],  # Mock daily data
+                "data": [0.5 * i for i in range(30)],
                 "time_stamp": datetime.now().isoformat(),
             },
         }

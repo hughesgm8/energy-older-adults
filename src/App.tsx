@@ -2,23 +2,51 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Activity, Tv, Gamepad, Lamp } from 'lucide-react';
+import { DeviceDataResponse, DeviceInfo, DeviceReading, DeviceInsightsParams, DeviceInsights } from './types/device';
+
+const ENERGY_THRESHOLDS = {
+  ACTIVE: 0.01,    // 10W
+  STANDBY: 0.001,  // 1W
+} as const;
 
 const MultiDeviceDashboard = () => {
-  const [data, setData] = useState<{ timestamp: Date; lamp: number; nintendo: number; tv: number }[]>([]);
-  const [deviceData, setDeviceData] = useState<any>({});
+  const [deviceData, setDeviceData] = useState<DeviceDataResponse>({});
+  const [data, setData] = useState<DeviceReading[]>([]);
 
   useEffect(() => {
     const fetchDeviceData = async () => {
       try {
-        console.log("Fetching device data from /api/device-data..."); // Log Fetch Request
+        console.log("Fetching device data from /api/device-data...");
         const response = await fetch('/api/device-data');
-        const text = await response.text(); // Get raw text response
-        console.log("Raw text response from Flask server:", text); // Log Raw Text Response
-        const result = JSON.parse(text); // Parse JSON response
-        console.log("Data fetched from Flask server:", result); // Log Fetched Data
-        setDeviceData(result);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        }
+        
+        const text = await response.text();
+        console.log("Raw response:", text); // Debug log
+        
+        try {
+          const result = JSON.parse(text);
+          console.log("Parsed data:", result);
+          setDeviceData(result);
+        } catch (parseError) {
+          console.error("JSON parse error:", parseError);
+          console.error("Received text:", text);
+          if (parseError instanceof Error) {
+            throw new Error(`Failed to parse JSON: ${parseError.message}`);
+          } else {
+            throw new Error('Failed to parse JSON');
+          }
+        }
       } catch (error) {
         console.error('Error fetching device data:', error);
+        if (error instanceof Error) {
+          console.error('Error details:', error.message);
+        } else {
+          console.error('Error details:', error);
+        }
       }
     };
 
@@ -27,102 +55,101 @@ const MultiDeviceDashboard = () => {
 
   useEffect(() => {
     if (Object.keys(deviceData).length > 0) {
+      if (!deviceData.device1?.hourly?.data) {
+        console.error('Invalid device data structure');
+        return;
+      }
+
       const updatedData = deviceData.device1.hourly.data.map((_: any, index: number) => {
         const timestamp = new Date();
         timestamp.setHours(timestamp.getHours() - (deviceData.device1.hourly.data.length - index));
-        return {
-          timestamp,
-          lamp: (deviceData.device1.hourly.data[index] || 0) / 1000, // Convert to kWh
-          nintendo: (deviceData.device2.hourly.data[index] || 0) / 1000,
-          tv: (deviceData.device3.hourly.data[index] || 0) / 1000,
-        };
+        
+        const readings: DeviceReading = { timestamp };
+        Object.keys(deviceData).forEach(deviceKey => {
+          const deviceName = deviceData[deviceKey].device_info.name.toLowerCase().replace(/\s+/g, '_');
+          readings[deviceName] = (deviceData[deviceKey].hourly.data[index] || 0) / 1000;
+        });
+        
+        return readings;
       });
-      console.log("Updated data with device data:", updatedData); // Log Updated Data with Device Data
+      
       setData(updatedData);
     }
   }, [deviceData]);
 
-  const getDeviceInsights = (deviceData: { timestamp: Date; lamp: number; nintendo: number; tv: number }[], type: 'lamp' | 'nintendo' | 'tv') => {
-    const activeThresholds = {
-      lamp: 0.005,
-      nintendo: 0.1,
-      tv: 0.01
-    };
-
-    const activeReadings = deviceData.filter(d => d[type as 'lamp' | 'nintendo' | 'tv'] > activeThresholds[type]);
-    const totalEnergy = activeReadings.reduce((sum, d) => sum + d[type], 0);
+  // Updated getDeviceInsights to work with dynamic device names
+  const getDeviceInsights = ({ deviceData, deviceKey, deviceInfo }: DeviceInsightsParams): DeviceInsights => {
+    if (!deviceData?.length || !deviceKey || !deviceInfo) {
+      throw new Error('Missing required parameters for device insights');
+    }
+    
+    const deviceName = deviceInfo.device_info.name.toLowerCase().replace(/\s+/g, '_');
+  
+    const activeReadings = deviceData.filter(reading => {
+      const value = reading[deviceName];
+      return typeof value === 'number' && value > ENERGY_THRESHOLDS.ACTIVE;
+    });
+  
+    const totalEnergy = activeReadings.reduce((sum, reading) => {
+      const value = reading[deviceName];
+      return sum + (typeof value === 'number' ? value : 0);
+    }, 0);
+  
     const activeHours = activeReadings.length;
-
+  
     return {
       totalEnergy,
       activeHours,
-      peakHour: activeReadings.reduce((max, d) =>
-        d[type] > (max?.value || 0) ? { hour: new Date(d.timestamp).getHours(), value: d[type] } : max, { hour: 0, value: 0 }
-      )
+      peakHour: activeReadings.reduce((max, reading) => {
+        const value = reading[deviceName];
+        if (typeof value !== 'number') return max;
+        return value > max.value 
+          ? { hour: reading.timestamp.getHours(), value } 
+          : max;
+      }, { hour: 0, value: 0 })
     };
   };
 
+  // Device cards are now generated dynamically
   return (
     <div className="space-y-6 p-4">
       <h1 className="text-2xl font-bold mb-6">Your Energy Usage Dashboard</h1>
 
-      {/* Device Summary Cards */}
+      {/* Dynamic Device Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Lamp className="w-6 h-6" /> Lamp
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <p>Evening reading patterns</p>
-              <p className="text-lg font-medium">
-                {getDeviceInsights(data, 'lamp').activeHours} hours of use
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Gamepad className="w-6 h-6" /> Nintendo Switch
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <p>Regular gaming sessions</p>
-              <p className="text-lg font-medium">
-                {getDeviceInsights(data, 'nintendo').activeHours} hours of gaming
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Tv className="w-6 h-6" /> Television
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <p>Most active in the evening</p>
-              <p className="text-lg font-medium">
-                {getDeviceInsights(data, 'tv').activeHours} hours of viewing time
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        {Object.entries(deviceData).map(([deviceKey, device]) => (
+          <Card key={deviceKey}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="w-6 h-6" />
+                {device.device_info.name}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <p>Device activity</p>
+                <p className="text-lg font-medium">
+                  {(() => {
+                    try {
+                      return getDeviceInsights({
+                        deviceData: data,
+                        deviceKey,
+                        deviceInfo: device
+                      }).activeHours + ' hours of use';
+                    } catch (error) {
+                      console.error(`Error getting insights for ${device.device_info.name}:`, error);
+                      return 'Data unavailable';
+                    }
+                  })()}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* Main Chart */}
+      {/* Updated Chart */}
       <Card>
-        <CardHeader>
-          <CardTitle>Energy Usage Patterns</CardTitle>
-          <p className="text-sm text-gray-500">Last 7 days of activity</p>
-        </CardHeader>
         <CardContent>
           <div className="h-96">
             <ResponsiveContainer width="100%" height="100%">
@@ -132,59 +159,32 @@ const MultiDeviceDashboard = () => {
                   dataKey="timestamp"
                   tickFormatter={(value) => {
                     const date = new Date(value);
-                    return `${date.toLocaleDateString()} ${date.getHours()}:00`;
-                  }}
-                  label={{
-                    value: 'Date and Time',
-                    position: 'bottom',
-                    offset: 0
+                    return `${date.getHours()}:00`;
                   }}
                 />
-                <YAxis
-                  label={{
-                    value: 'Energy Usage (kWh)',
-                    angle: -90,
-                    position: 'insideLeft'
-                  }}
-                />
-                <Tooltip
-                  labelFormatter={(value) => {
-                    const date = new Date(value);
-                    return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
-                  }}
-                  formatter={(value, name) => [
-                    `${typeof value === 'number' ? value.toFixed(3) : value} kWh`,
-                    typeof name === 'string' ? name.charAt(0).toUpperCase() + name.slice(1) : name
-                  ]}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="lamp"
-                  stroke="#2dd4bf"
-                  name="Lamp"
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="nintendo"
-                  stroke="#dc2626"
-                  name="Nintendo Switch"
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="tv"
-                  stroke="#2563eb"
-                  name="TV"
-                  dot={false}
-                />
+                <YAxis />
+                <Tooltip />
+                {Object.entries(deviceData).map(([deviceKey, device], index) => {
+                  const deviceName = device.device_info.name.toLowerCase().replace(/\s+/g, '_');
+                  const colors = ['#2dd4bf', '#dc2626', '#2563eb'];
+                  return (
+                    <Line
+                      key={deviceKey}
+                      type="monotone"
+                      dataKey={deviceName}
+                      stroke={colors[index % colors.length]}
+                      name={device.device_info.name}
+                      dot={false}
+                    />
+                  );
+                })}
               </LineChart>
             </ResponsiveContainer>
           </div>
         </CardContent>
       </Card>
 
-      {/* Insights Section */}
+      {/* Dynamic Insights Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -194,18 +194,17 @@ const MultiDeviceDashboard = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="p-4 bg-teal-50 rounded-lg">
-              <h3 className="font-medium">Lamp Usage</h3>
-              <p>Your lamp is most active in the evening</p>
-            </div>
-            <div className="p-4 bg-red-50 rounded-lg">
-              <h3 className="font-medium">Nintendo Switch Activity</h3>
-              <p>You typically play games for 2-3 hours each day</p>
-            </div>
-            <div className="p-4 bg-blue-50 rounded-lg">
-              <h3 className="font-medium">TV Usage</h3>
-              <p>Your TV is most active between 6 PM and 10 PM</p>
-            </div>
+            {Object.entries(deviceData).map(([deviceKey, device], index) => (
+              <div
+                key={deviceKey}
+                className={`p-4 ${
+                  index === 0 ? 'bg-teal-50' : index === 1 ? 'bg-red-50' : 'bg-blue-50'
+                } rounded-lg`}
+              >
+                <h3 className="font-medium">{device.device_info.name} Usage</h3>
+                <p>Activity patterns will be analyzed based on usage data</p>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
