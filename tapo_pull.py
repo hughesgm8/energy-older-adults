@@ -1,0 +1,89 @@
+"""P110 and P115 Example"""
+
+import asyncio
+import os
+from datetime import datetime
+import json
+from typing import Dict, Any
+
+from tapo import ApiClient
+from tapo.requests import EnergyDataInterval
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Add mock data constants
+MOCK_DEVICE_NAMES = {
+    "device1": "Sonos Lamp",
+    "device2": "Nintendo Switch",
+    "device3": "Living Room TV"
+}
+
+async def fetch_device_data(client, ip_address, device_id: str) -> Dict[str, Any]:
+    try:
+        device = await client.p110(ip_address)
+        today = datetime.today()
+        
+        # Try to get real device info
+        device_info = await device.get_device_info()
+        energy_data_hourly = await device.get_energy_data(EnergyDataInterval.Hourly, today)
+        energy_data_daily = await device.get_energy_data(
+            EnergyDataInterval.Daily,
+            datetime(today.year, get_quarter_start_month(today), 1),
+        )
+        
+        return {
+            "device_info": device_info.to_dict(),
+            "hourly": energy_data_hourly.to_dict(),
+            "daily": energy_data_daily.to_dict(),
+        }
+    
+    except Exception as e:
+        print(f"Could not fetch real device data: {e}. Using mock data.")
+        # Return mock data if real device is unreachable
+        return {
+            "device_info": {
+                "device_id": device_id,
+                "name": MOCK_DEVICE_NAMES.get(device_id, f"Device {device_id}"),
+                "type": "SMART.TAPOPLUG",
+                "model": "P110",
+            },
+            "hourly": {
+                "data": [0.1 * i for i in range(24)],  # Mock hourly data
+                "time_stamp": datetime.now().isoformat(),
+            },
+            "daily": {
+                "data": [0.5 * i for i in range(30)],  # Mock daily data
+                "time_stamp": datetime.now().isoformat(),
+            },
+        }
+
+async def main():
+    tapo_username = os.getenv("TAPO_USERNAME")
+    tapo_password = os.getenv("TAPO_PASSWORD")
+    ip_address_device1 = os.getenv("IP_ADDRESS_SONOS")
+    ip_address_device2 = os.getenv("IP_ADDRESS_NINTENDO")
+    ip_address_device3 = os.getenv("IP_ADDRESS_TV")
+
+    if not all([tapo_username, tapo_password, ip_address_device1, ip_address_device2, ip_address_device3]):
+        raise ValueError("Missing required environment variables")
+
+    client = ApiClient(tapo_username, tapo_password)
+
+    # Fetch data for each device
+    data = {
+        "device1": await fetch_device_data(client, ip_address_device1, "device1"),
+        "device2": await fetch_device_data(client, ip_address_device2, "device2"),
+        "device3": await fetch_device_data(client, ip_address_device3, "device3"),
+    }
+
+    return json.dumps(data, indent=4)
+
+
+def get_quarter_start_month(today: datetime) -> int:
+    return 3 * ((today.month - 1) // 3) + 1
+
+
+if __name__ == "__main__":
+    data = asyncio.run(main())
+    print(data)
