@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@radix-ui/react-slot": "^1.1.2",
     "@shadcn/ui": "^0.0.4",
     "@tailwindcss/vite": "^4.0.4",
     "autoprefixer": "^10.4.20",
@@ -43,7 +44,6 @@
     "vite": "^6.1.0"
   },
   "overrides": {
-  "react-is": "^19.0.0-rc-69d4b800-20241021"
+    "react-is": "^19.0.0-rc-69d4b800-20241021"
   }
-
 }

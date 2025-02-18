@@ -45,3 +45,17 @@ export interface DeviceInsights {
         hour: number; 
         value: number };
 }
+
+export type ViewType = 'day' | 'week';
+
+export interface TimeRange {
+  start: Date;
+  end: Date;
+}
+
+export interface ViewControlsProps {
+    viewType: 'day' | 'week';
+    onViewTypeChange: (type: 'day' | 'week') => void;
+    onNavigate: (direction: 'prev' | 'next') => void;
+    currentDate: Date;
+  }

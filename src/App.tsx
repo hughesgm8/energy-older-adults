@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Activity, Tv, Gamepad, Lamp } from 'lucide-react';
+import { Activity, ChevronLeft, ChevronRight, Tv, Gamepad, Lamp } from 'lucide-react';
 import { DeviceDataResponse, DeviceInfo, DeviceReading, DeviceInsightsParams, DeviceInsights } from './types/device';
+import { TimeRange, ViewControlsProps, ViewType } from './types/views';
+import { ViewControls } from './components/ViewControls/ViewControls';
 
 const ENERGY_THRESHOLDS = {
   ACTIVE: 0.01,    // 10W
@@ -12,12 +15,41 @@ const ENERGY_THRESHOLDS = {
 const MultiDeviceDashboard = () => {
   const [deviceData, setDeviceData] = useState<DeviceDataResponse>({});
   const [data, setData] = useState<DeviceReading[]>([]);
+  const [viewType, setViewType] = useState<ViewType>('day');
+  const [currentDate, setCurrentDate] = useState<Date>(new Date());
+
+  const getTimeRange = (date: Date, type: ViewType): TimeRange => {
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    
+    const end = new Date(date);
+    if (type === 'week') {
+      end.setDate(end.getDate() + 6);
+    }
+    end.setHours(23, 59, 59, 999);
+    
+    return { start, end };
+  };
+
+  const handleNavigate = (direction: 'prev' | 'next') => {
+    const newDate = new Date(currentDate);
+    const days = viewType === 'week' ? 7 : 1;
+    
+    if (direction === 'prev') {
+      newDate.setDate(newDate.getDate() - days);
+    } else {
+      newDate.setDate(newDate.getDate() + days);
+    }
+    
+    setCurrentDate(newDate);
+  };
 
   useEffect(() => {
+    const timeRange = getTimeRange(currentDate, viewType);
     const fetchDeviceData = async () => {
       try {
-        console.log("Fetching device data from /api/device-data...");
-        const response = await fetch('/api/device-data');
+        console.log(`Fetching ${viewType} data for ${timeRange.start.toISOString()} to ${timeRange.end.toISOString()}`);
+        const response = await fetch(`/api/device-data?start=${timeRange.start.toISOString()}&end=${timeRange.end.toISOString()}&view=${viewType}`);
         
         if (!response.ok) {
           const errorText = await response.text();
@@ -51,7 +83,7 @@ const MultiDeviceDashboard = () => {
     };
 
     fetchDeviceData();
-  }, []);
+  }, [currentDate, viewType]);
 
   useEffect(() => {
     if (Object.keys(deviceData).length > 0) {
@@ -114,6 +146,13 @@ const MultiDeviceDashboard = () => {
   return (
     <div className="space-y-6 p-4">
       <h1 className="text-2xl font-bold mb-6">Your Energy Usage Dashboard</h1>
+    
+      {/* View Controls */}<ViewControls
+        viewType={viewType}
+        onViewTypeChange={setViewType}
+        onNavigate={handleNavigate}
+        currentDate={currentDate}
+      />
 
       {/* Dynamic Device Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
