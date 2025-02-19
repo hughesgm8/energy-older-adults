@@ -7,10 +7,20 @@ import { DeviceDataResponse, DeviceInfo, DeviceReading, DeviceInsightsParams, De
 import { TimeRange, ViewControlsProps, ViewType } from './types/views';
 import { ViewControls } from './components/ViewControls/ViewControls';
 
-const ENERGY_THRESHOLDS = {
-  ACTIVE: 0.01,    // 10W
-  STANDBY: 0.001,  // 1W
-} as const;
+interface EnergyThresholds {
+  TV: number;
+  LAMP: number;
+  SWITCH: number;
+  ACTIVE: number; // general threshold as fallback
+  [key: string]: number; // This allows for dynamic string indexing
+}
+
+const ENERGY_THRESHOLDS: EnergyThresholds = {
+  TV: 0.06,
+  LAMP: 0.015,
+  SWITCH: 0.02,
+  ACTIVE: 0.02 // General threshold as fallback
+};
 
 const MultiDeviceDashboard = () => {
   const [deviceData, setDeviceData] = useState<DeviceDataResponse>({});
@@ -91,35 +101,84 @@ const MultiDeviceDashboard = () => {
         console.error('Invalid device data structure');
         return;
       }
-
-      const updatedData = deviceData.device1.hourly.data.map((_: any, index: number) => {
-        const timestamp = new Date();
-        timestamp.setHours(timestamp.getHours() - (deviceData.device1.hourly.data.length - index));
-        
-        const readings: DeviceReading = { timestamp };
-        Object.keys(deviceData).forEach(deviceKey => {
-          const deviceName = deviceData[deviceKey].device_info.name.toLowerCase().replace(/\s+/g, '_');
-          readings[deviceName] = (deviceData[deviceKey].hourly.data[index] || 0) / 1000;
+  
+      let updatedData: DeviceReading[] = [];
+      
+      if (viewType === 'week') {
+        // For week view, create 7 days worth of data
+        for (let day = 0; day < 7; day++) {
+          const dayDate = new Date(currentDate);
+          dayDate.setDate(dayDate.getDate() + day);
+          
+          const dayData = deviceData.device1.hourly.data.map((_: any, index: number) => {
+            const timestamp = new Date(dayDate);
+            timestamp.setHours(index, 0, 0, 0);
+            
+            const readings: DeviceReading = { timestamp };
+            Object.keys(deviceData).forEach(deviceKey => {
+              const deviceName = deviceData[deviceKey].device_info.name.toLowerCase().replace(/\s+/g, '_');
+              const value = deviceData[deviceKey].hourly.data[index] || 0;
+              readings[deviceName] = value;
+            });
+            
+            return readings;
+          });
+          
+          updatedData = [...updatedData, ...dayData];
+        }
+      } else {
+        // Original day view logic
+        updatedData = deviceData.device1.hourly.data.map((_: any, index: number) => {
+          const timestamp = new Date(currentDate);
+          timestamp.setHours(index, 0, 0, 0);
+          
+          const readings: DeviceReading = { timestamp };
+          Object.keys(deviceData).forEach(deviceKey => {
+            const deviceName = deviceData[deviceKey].device_info.name.toLowerCase().replace(/\s+/g, '_');
+            const value = deviceData[deviceKey].hourly.data[index] || 0;
+            readings[deviceName] = value;
+          });
+          
+          return readings;
         });
-        
-        return readings;
+      }
+  
+      console.log(`${viewType} view data:`, {
+        dataPoints: updatedData.length,
+        sampleData: updatedData.slice(0, 3)
       });
       
       setData(updatedData);
     }
-  }, [deviceData]);
+  }, [deviceData, currentDate, viewType]);
 
   // Updated getDeviceInsights to work with dynamic device names
   const getDeviceInsights = ({ deviceData, deviceKey, deviceInfo }: DeviceInsightsParams): DeviceInsights => {
-    if (!deviceData?.length || !deviceKey || !deviceInfo) {
-      throw new Error('Missing required parameters for device insights');
-    }
+    console.log('getDeviceInsights parameters:', {
+      hasDeviceData: Boolean(deviceData?.length),
+      deviceDataLength: deviceData?.length,
+      deviceKey,
+      deviceInfo: deviceInfo ? JSON.stringify(deviceInfo) : 'missing'
+    });
     
+    if (!deviceData?.length || !deviceKey || !deviceInfo) {
+      throw new Error(`Missing required parameters for device insights:
+        deviceData: ${Boolean(deviceData?.length)},
+        deviceKey: ${Boolean(deviceKey)},
+        deviceInfo: ${Boolean(deviceInfo)}`
+      );
+    }
+
     const deviceName = deviceInfo.device_info.name.toLowerCase().replace(/\s+/g, '_');
-  
+    const activeThreshold = deviceName.includes('tv') 
+    ? ENERGY_THRESHOLDS.TV
+    : deviceName.includes('lamp')
+    ? ENERGY_THRESHOLDS.LAMP
+    : ENERGY_THRESHOLDS.SWITCH;
+    
     const activeReadings = deviceData.filter(reading => {
       const value = reading[deviceName];
-      return typeof value === 'number' && value > ENERGY_THRESHOLDS.ACTIVE;
+      return typeof value === 'number' && value > activeThreshold;
     });
   
     const totalEnergy = activeReadings.reduce((sum, reading) => {
@@ -127,9 +186,29 @@ const MultiDeviceDashboard = () => {
       return sum + (typeof value === 'number' ? value : 0);
     }, 0);
   
-    const activeHours = activeReadings.length;
+    let activeHours = 0;
+
+    if (viewType === 'week') {
+      // Group readings by day and sum them up
+      const dailyHours = activeReadings.reduce((acc, reading) => {
+        const day = reading.timestamp.toDateString();
+        acc[day] = (acc[day] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
   
-    return {
+      // Sum up all daily hours
+      activeHours = Object.values(dailyHours).reduce((sum, hours) => sum + hours, 0);
+      
+      console.log(`Week view for ${deviceName}:`, {
+        dailyBreakdown: dailyHours,
+        totalHours: activeHours
+      });
+    } else {
+      // For day view, just count the active readings
+      activeHours = activeReadings.length;
+    }
+  
+    const result = {
       totalEnergy,
       activeHours,
       peakHour: activeReadings.reduce((max, reading) => {
@@ -140,6 +219,9 @@ const MultiDeviceDashboard = () => {
           : max;
       }, { hour: 0, value: 0 })
     };
+  
+    console.log(`Final insights for ${deviceName} (${viewType}):`, result);
+    return result;
   };
 
   // Device cards are now generated dynamically
@@ -169,12 +251,19 @@ const MultiDeviceDashboard = () => {
                 <p>Device activity</p>
                 <p className="text-lg font-medium">
                   {(() => {
+                    if (!data || data.length === 0) {
+                      return 'Loading...';
+                    }
+                    
                     try {
-                      return getDeviceInsights({
+                      const insights = getDeviceInsights({
                         deviceData: data,
                         deviceKey,
-                        deviceInfo: device
-                      }).activeHours + ' hours of use';
+                        deviceInfo: device,
+                        viewType // Add this
+                      });
+                      
+                      return `${insights.activeHours} hours of use`;
                     } catch (error) {
                       console.error(`Error getting insights for ${device.device_info.name}:`, error);
                       return 'Data unavailable';

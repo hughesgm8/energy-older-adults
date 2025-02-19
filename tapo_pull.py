@@ -27,21 +27,21 @@ MOCK_DEVICE_NAMES = {
 
 DEVICE_PATTERNS = {
     "device1": {  # Sonos Lamp
-        "base_load": 0.02,
-        "peak_hours": [(18, 23)],  # Evening usage
-        "peak_multiplier": 3,
+        "base_load": 0.01,  # 10W standby
+        "peak_hours": [(17, 23)],  # Evening usage 6 hours
+        "peak_multiplier": 2.5,  # Up to 25W during use
         "weekend_multiplier": 1.2
     },
     "device2": {  # Nintendo Switch
-        "base_load": 0.015,
-        "peak_hours": [(14, 22)],  # Afternoon/evening gaming
-        "peak_multiplier": 4,
-        "weekend_multiplier": 1.5
+        "base_load": 0.005,  # 5W standby
+        "peak_hours": [(19, 20)],  # 1 hour evening gaming
+        "peak_multiplier": 8,  # Up to 40W during use
+        "weekend_multiplier": 2.0  # More likely to be used on weekends
     },
     "device3": {  # Living Room TV
-        "base_load": 0.05,
-        "peak_hours": [(7, 9), (18, 23)],  # Morning and evening TV
-        "peak_multiplier": 2.5,
+        "base_load": 0.02,  # 20W standby
+        "peak_hours": [(20, 22)],  # 2 hours evening TV
+        "peak_multiplier": 4,  # Up to 80W during use
         "weekend_multiplier": 1.3
     }
 }

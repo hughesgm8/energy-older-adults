@@ -1,3 +1,5 @@
+import { ViewType } from './views';
+
 export interface DeviceInfo {
   device_id: string;
   name: string;
@@ -32,11 +34,12 @@ export interface DeviceReading {
     [deviceName: string]: number | Date;
   }
 
-export interface DeviceInsightsParams {
-    deviceData: DeviceReading[];   
+  export interface DeviceInsightsParams {
+    deviceData: DeviceReading[];
     deviceKey: string;
     deviceInfo: DeviceInfo;
-}
+    viewType: ViewType;
+  }
 
 export interface DeviceInsights {
     totalEnergy: number;
@@ -45,17 +48,3 @@ export interface DeviceInsights {
         hour: number; 
         value: number };
 }
-
-export type ViewType = 'day' | 'week';
-
-export interface TimeRange {
-  start: Date;
-  end: Date;
-}
-
-export interface ViewControlsProps {
-    viewType: 'day' | 'week';
-    onViewTypeChange: (type: 'day' | 'week') => void;
-    onNavigate: (direction: 'prev' | 'next') => void;
-    currentDate: Date;
-  }
