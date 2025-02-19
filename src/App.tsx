@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Activity, ChevronLeft, ChevronRight, Tv, Gamepad, Lamp } from 'lucide-react';
 import { DeviceDataResponse, DeviceInfo, DeviceReading, DeviceInsightsParams, DeviceInsights } from './types/device';
 import { TimeRange, ViewControlsProps, ViewType } from './types/views';
@@ -227,7 +227,7 @@ const MultiDeviceDashboard = () => {
   // Device cards are now generated dynamically
   return (
     <div className="space-y-6 p-4">
-      <h1 className="text-2xl font-bold mb-6">Your Energy Usage Dashboard</h1>
+      <h1 className="text-2xl font-bold mb-6">Your Energy Usage</h1>
     
       {/* View Controls */}<ViewControls
         viewType={viewType}
@@ -276,22 +276,68 @@ const MultiDeviceDashboard = () => {
         ))}
       </div>
 
-      {/* Updated Chart */}
+      {/* Chart Card */}
       <Card>
-        <CardContent>
+        <CardContent className="pt-6">
           <div className="h-96">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={data}>
+              <LineChart
+                data={data}
+                margin={{ top: 15, right: 30, left: 30, bottom: 20 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis
                   dataKey="timestamp"
                   tickFormatter={(value) => {
                     const date = new Date(value);
-                    return `${date.getHours()}:00`;
+                    if (viewType === 'week') {
+                      return date.toLocaleDateString('en-AU', {
+                        weekday: 'short',
+                        day: '2-digit',
+                        month: '2-digit'
+                      }).replace(/\//g, '/');
+                    }
+                    return `${date.getHours().toString().padStart(2, '0')}:00`;
+                  }}
+                  label={{ 
+                    value: viewType === 'week' ? 'Date' : 'Time of Day', 
+                    position: 'insideBottom',
+                    offset: -10
                   }}
                 />
-                <YAxis />
-                <Tooltip />
+                <YAxis 
+                  label={{ 
+                    value: 'Energy Usage (kW)', 
+                    angle: -90, 
+                    position: 'insideLeft',
+                    offset: -15
+                  }}
+                />
+                <Tooltip
+                  formatter={(value: number, name: string) => {
+                    const deviceInfo = Object.values(deviceData).find(
+                      device => device.device_info.name.toLowerCase().replace(/\s+/g, '_') === name
+                    );
+                    return [`${value.toFixed(3)} kW`, deviceInfo?.device_info.name || name];
+                  }}
+                  labelFormatter={(label) => {
+                    const date = new Date(label);
+                    if (viewType === 'week') {
+                      return date.toLocaleDateString('en-AU', {
+                        weekday: 'long',
+                        day: '2-digit',
+                        month: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      });
+                    }
+                    return `${date.getHours().toString().padStart(2, '0')}:00`;
+                  }}
+                />
+                <Legend 
+                  verticalAlign="top" 
+                  height={36}
+                />
                 {Object.entries(deviceData).map(([deviceKey, device], index) => {
                   const deviceName = device.device_info.name.toLowerCase().replace(/\s+/g, '_');
                   const colors = ['#2dd4bf', '#dc2626', '#2563eb'];
@@ -301,7 +347,7 @@ const MultiDeviceDashboard = () => {
                       type="monotone"
                       dataKey={deviceName}
                       stroke={colors[index % colors.length]}
-                      name={device.device_info.name}
+                      name={deviceName}
                       dot={false}
                     />
                   );
