@@ -1,50 +1,42 @@
 import { ViewType } from './views';
 
 export interface DeviceInfo {
-  device_id: string;
-  name: string;
-  type: string;
-  model: string;
-  device_info: {
-    name: string;
-  };
-  hourly: {
-    data: number[];
-  };
+    name: string;      // Extracted from folder name before '_'
+    hourly: {
+        data: number[];  // Array of hourly energy readings
+        timestamps: string[];  // Array of corresponding timestamps
+    };
 }
 
 export interface DeviceData {
-  device_info: DeviceInfo;
-  hourly: {
-    data: number[];
-    time_stamp: string;
-  };
-  daily: {
-    data: number[];
-    time_stamp: string;
-  };
+    name: string;
+    hourly: {
+        data: number[];
+        timestamps: string[];
+    };
 }
 
 export interface DeviceDataResponse {
-  [deviceKey: string]: DeviceInfo;
+    [deviceKey: string]: DeviceData;
 }
 
 export interface DeviceReading {
     timestamp: Date;
-    [deviceName: string]: number | Date;
-  }
+    [deviceKey: string]: Date | number;  // Allow for dynamic device readings
+}
 
-  export interface DeviceInsightsParams {
+export interface DeviceInsightsParams {
     deviceData: DeviceReading[];
     deviceKey: string;
-    deviceInfo: DeviceInfo;
+    deviceInfo: DeviceData;
     viewType: ViewType;
-  }
+}
 
 export interface DeviceInsights {
     totalEnergy: number;
     activeHours: number;
     peakHour: { 
         hour: number; 
-        value: number };
+        value: number 
+    };
 }

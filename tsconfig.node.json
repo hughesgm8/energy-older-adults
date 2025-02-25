@@ -18,7 +18,15 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+
+    /* Types */
+    "types": [
+      "@babel/core",
+      "@babel/generator",
+      "@babel/template",
+      "@babel/traverse"
+    ]
   },
   "include": ["vite.config.ts"]
 }

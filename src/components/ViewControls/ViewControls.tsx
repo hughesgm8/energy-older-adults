@@ -1,8 +1,29 @@
 import { Button } from '@/components/ui/button';
-import { ViewControlsProps } from '@/types/views';
+import { ViewControlsProps, ViewType } from '@/types/views';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export function ViewControls({ viewType, onViewTypeChange, onNavigate, currentDate }: ViewControlsProps) {
+  
+  const formatDateRange = (date: Date, viewType: ViewType) => {
+    if (viewType === 'week') {
+        const startDate = new Date(date);
+        startDate.setDate(date.getDate() - 6); // Go back 6 days from current date
+        return `${startDate.toLocaleDateString('en-AU', { 
+            day: 'numeric', 
+            month: 'short'
+        })} - ${date.toLocaleDateString('en-AU', { 
+            day: 'numeric', 
+            month: 'short', 
+            year: 'numeric'
+        })}`;
+    }
+    return date.toLocaleDateString('en-AU', { 
+        day: 'numeric', 
+        month: 'short', 
+        year: 'numeric'
+    });
+  };
+  
   return (
     <div className="flex items-center justify-between mb-4">
       <div className="flex items-center space-x-4">
@@ -29,13 +50,9 @@ export function ViewControls({ viewType, onViewTypeChange, onNavigate, currentDa
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <span className="min-w-[120px] text-center">
-          {currentDate.toLocaleDateString('en-AU', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric'
-          })}
-        </span>
+        <div className="text-sm font-medium">
+          {formatDateRange(currentDate, viewType)}
+      </div>
         <Button
           variant="outline"
           size="icon"
