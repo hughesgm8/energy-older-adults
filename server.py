@@ -32,26 +32,33 @@ def get_device_data(participant_id):
                 # Extract device name from folder (everything before the '_')
                 device_name = device_folder.split('_')[0]
                 
-                csv_path = os.path.join(device_path, 'Day-Table 1.csv')
-                if os.path.exists(csv_path):
-                    try:
-                        # Skip the first row (header) and read timestamp and energy usage
-                        df = pd.read_csv(csv_path, skiprows=1, 
-                                       names=['timestamp', 'energy', 'unused1', 'unused2', 'unused3'],
-                                       usecols=['timestamp', 'energy'])
-                        
-                        # Convert data to arrays for the response
-                        device_data[device_name] = {
-                            'name': device_name,
-                            'hourly': {
-                                'data': df['energy'].tolist(),
-                                'timestamps': df['timestamp'].tolist()
-                            }
-                        }
-                        
-                    except Exception as e:
-                        print(f"Error processing CSV for {device_folder}: {str(e)}")
-                        continue
+                device_data[device_name] = {
+                    'name': device_name,
+                    'hourly': {
+                        'data': [],
+                        'timestamps': []
+                    }
+                }
+                
+                for date_folder in os.listdir(device_path):
+                    date_path = os.path.join(device_path, date_folder)
+                    
+                    if os.path.isdir(date_path):
+                        csv_path = os.path.join(date_path, 'Day-Table 1.csv')
+                        if os.path.exists(csv_path):
+                            try:
+                                # Skip the first row (header) and read timestamp and energy usage
+                                df = pd.read_csv(csv_path, skiprows=1, 
+                                               names=['timestamp', 'energy', 'unused1', 'unused2', 'unused3'],
+                                               usecols=['timestamp', 'energy'])
+                                
+                                # Append data to the response
+                                device_data[device_name]['hourly']['data'].extend(df['energy'].tolist())
+                                device_data[device_name]['hourly']['timestamps'].extend(df['timestamp'].tolist())
+                                
+                            except Exception as e:
+                                print(f"Error processing CSV for {device_folder} on {date_folder}: {str(e)}")
+                                continue
 
         return jsonify(device_data)
         
