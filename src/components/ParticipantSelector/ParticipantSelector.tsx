@@ -1,16 +1,31 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export function ParticipantSelector() {
   const navigate = useNavigate();
   
   return (
-    <div className="container mx-auto p-8">
-      <h1 className="text-2xl font-bold mb-6">Select Participant</h1>
-      <div className="grid gap-4 max-w-md">
-        <Button onClick={() => navigate('/participant/P0')}>
-          Participant P0
-        </Button>
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="w-full max-w-md mx-auto px-4 py-8">
+        <Card className="shadow">
+          <CardHeader>
+            <CardTitle className="text-xl sm:text-2xl text-center">
+              Select Participant
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <Button 
+                onClick={() => navigate('/participant/P0')}
+                className="w-full text-base py-6"
+              >
+                Participant P0
+              </Button>
+              {/* Add more participants here as needed */}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

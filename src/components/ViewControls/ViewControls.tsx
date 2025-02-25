@@ -9,8 +9,7 @@ export function ViewControls({ viewType, onViewTypeChange, onNavigate, currentDa
     if (viewType === 'day') {
       return date.toLocaleDateString('en-AU', { 
         day: 'numeric', 
-        month: 'short', 
-        year: 'numeric'
+        month: 'short'
       });
     }
     
@@ -27,40 +26,44 @@ export function ViewControls({ viewType, onViewTypeChange, onNavigate, currentDa
     // Format the end date
     const endStr = date.toLocaleDateString('en-AU', { 
       day: 'numeric', 
-      month: 'short', 
-      year: 'numeric'
+      month: 'short'
     });
     
     return `${startStr} - ${endStr}`;
   };
   
   return (
-    <div className="flex items-center justify-between mb-4">
-      <div className="flex items-center space-x-4">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
+      <div className="flex items-center gap-2 w-full sm:w-auto">
         <Button
           variant={viewType === 'day' ? 'default' : 'secondary'}
           onClick={() => onViewTypeChange('day')}
+          className="flex-1 sm:flex-none"
+          size="sm"
         >
           Day
         </Button>
         <Button
           variant={viewType === 'week' ? 'default' : 'secondary'}
           onClick={() => onViewTypeChange('week')}
+          className="flex-1 sm:flex-none"
+          size="sm"
         >
           Week
         </Button>
       </div>
       
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-end">
         <Button
           variant="outline"
           size="icon"
           onClick={() => onNavigate('prev')}
           aria-label="Previous"
+          className="h-8 w-8"
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <div className="text-sm font-medium min-w-32 text-center">
+        <div className="text-sm font-medium min-w-20 text-center">
           {formatDateRange(currentDate, viewType)}
         </div>
         <Button
@@ -68,6 +71,7 @@ export function ViewControls({ viewType, onViewTypeChange, onNavigate, currentDa
           size="icon"
           onClick={() => onNavigate('next')}
           aria-label="Next"
+          className="h-8 w-8"
         >
           <ChevronRight className="h-4 w-4" />
         </Button>

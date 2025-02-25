@@ -216,7 +216,7 @@ export function Dashboard() {
             setIsLoading(true);
             try {
                 console.log('Fetching data for participant:', participantId);
-                const response = await fetch(`http://localhost:5000/api/device-data/${participantId}`, {
+                const response = await fetch(`/api/device-data/${participantId}`, {
                     method: 'GET',
                     headers: {
                         'Accept': 'application/json',
@@ -323,218 +323,238 @@ export function Dashboard() {
     };
 
     if (isLoading) {
-        return <div className="p-4">Loading dashboard data...</div>;
+        return <div className="flex justify-center items-center min-h-screen p-4">Loading dashboard data...</div>;
     }
     
     if (error) {
-        return <div className="p-4 text-red-500">Error: {error}</div>;
+        return <div className="flex justify-center items-center min-h-screen p-4 text-red-500">Error: {error}</div>;
     }
     
     if (!deviceData || Object.keys(deviceData).length === 0) {
-        return <div className="p-4">No device data available for this participant.</div>;
+        return <div className="flex justify-center items-center min-h-screen p-4">No device data available for this participant.</div>;
     }
     
     const timeRange = getTimeRange(currentDate, viewType);
 
     return (
-        <div className="space-y-6 p-4">
-            <h1 className="text-2xl font-bold mb-6">Your Energy Usage ({participantId})</h1>
-            
-            {/* View Controls */}
-            <ViewControls
-                viewType={viewType}
-                onViewTypeChange={setViewType}
-                onNavigate={handleNavigate}
-                currentDate={currentDate}
-            />
+        <div className="min-h-screen bg-background">
+            <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+                <h1 className="text-xl sm:text-2xl font-bold mb-6 text-center sm:text-left">
+                    Your Energy Usage ({participantId})
+                </h1>
+                
+                {/* View Controls */}
+                <ViewControls
+                    viewType={viewType}
+                    onViewTypeChange={setViewType}
+                    onNavigate={handleNavigate}
+                    currentDate={currentDate}
+                />
 
-            {/* Date Range Info - To help users understand what data is being shown */}
-            <div className="text-sm text-gray-600 mb-4">
-                Showing data from {formatDateRange(timeRange.start, timeRange.end, viewType)}
-                {data.length === 0 && " (No data available for this period)"}
-            </div>
-
-            {/* Dynamic Device Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {Object.entries(deviceData).map(([deviceKey, device]) => (
-                    <Card key={deviceKey}>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Activity className="w-6 h-6" />
-                                {device.name}
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                        <div className="space-y-2">
-                            <p>Device activity</p>
-                            <p className="text-lg font-medium">
-                            {(() => {
-                                if (!data || data.length === 0) {
-                                    return 'No active data for this period';
-                                }
-                                
-                                try {
-                                    const insights = getDeviceInsights({
-                                        deviceData: data,
-                                        deviceKey,
-                                        deviceInfo: device,
-                                        viewType
-                                    });
-                                    
-                                    return `${insights.activeHours} hours of use`;
-                                } catch (error) {
-                                    return 'Data unavailable';
-                                }
-                            })()}
-                            </p>
-                        </div>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
-
-            {/* Chart Card */}
-            <Card>
-                <CardContent className="pt-6">
-                {data.length === 0 ? (
-                    <div className="flex justify-center items-center h-96">
-                        <p>No data available for this time period</p>
-                    </div>
-                ) : (
-                    <div className="h-96">
-                        <ResponsiveContainer width="100%" height="100%">
-                        <LineChart
-                            data={data}
-                            margin={{ top: 15, right: 30, left: 30, bottom: 20 }}
-                        >
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis
-                                dataKey="timestamp"
-                                tickFormatter={(value) => {
-                                    const date = new Date(value);
-                                    if (viewType === 'week') {
-                                    // For week view, show weekday + day number, without repeating
-                                    return date.toLocaleDateString('en-AU', {
-                                        weekday: 'short',
-                                        day: 'numeric'
-                                    });
-                                    }
-                                    // For day view, show hour
-                                    return `${date.getHours().toString().padStart(2, '0')}:00`;
-                                }}
-                                label={{ 
-                                    value: viewType === 'week' ? 'Date' : 'Time of Day', 
-                                    position: 'insideBottom',
-                                    offset: -10
-                                }}
-                            />
-                            <YAxis 
-                                label={{ 
-                                    value: 'Energy Usage (kW)', 
-                                    angle: -90, 
-                                    position: 'insideLeft',
-                                    offset: -15
-                                }}
-                            />
-                            <Tooltip
-                                formatter={(value: number, name: string) => {
-                                    const deviceInfo = Object.values(deviceData).find(
-                                        device => device.name.toLowerCase().replace(/\\s+/g, '_') === name
-                                    );
-                                    return [`${value.toFixed(3)} kW`, deviceInfo?.name || name];
-                                }}
-                                labelFormatter={(label) => {
-                                    const date = new Date(label);
-                                    return date.toLocaleDateString('en-AU', {
-                                        weekday: 'long',
-                                        day: '2-digit',
-                                        month: 'short',
-                                        hour: '2-digit',
-                                        minute: '2-digit'
-                                    });
-                                }}
-                            />
-                            <Legend 
-                                verticalAlign="top" 
-                                height={36}
-                            />
-                            {Object.entries(deviceData).map(([deviceKey, device], index) => {
-                                const deviceName = device.name.toLowerCase().replace(/\\s+/g, '_');
-                                const colors = ['#2dd4bf', '#dc2626', '#2563eb'];
-                                return (
-                                    <Line
-                                        key={deviceKey}
-                                        type="monotone"
-                                        dataKey={deviceName}
-                                        stroke={colors[index % colors.length]}
-                                        name={device.name}
-                                        dot={viewType === 'week'} // Show dots only for week view
-                                    />
-                                );
-                            })}
-                        </LineChart>
-                        </ResponsiveContainer>
-                    </div>
-                )}
-                </CardContent>
-            </Card>
-
-            {/* Daily Insights Section */}
-            <Card>
-                <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <Activity className="w-6 h-6" />
-                    Usage Insights
-                </CardTitle>
-                </CardHeader>
-                <CardContent>
-                <div className="space-y-4">
-                    {Object.entries(deviceData).map(([deviceKey, device], index) => {
-                        // Skip if no data for this time period
-                        if (data.length === 0) {
-                            return (
-                                <div key={deviceKey} className="p-4 bg-gray-50 rounded-lg">
-                                    <h3 className="font-medium">{device.name}</h3>
-                                    <p>No usage data available for this time period</p>
-                                </div>
-                            );
-                        }
-
-                        try {
-                            const insights = getDeviceInsights({
-                                deviceData: data,
-                                deviceKey,
-                                deviceInfo: device,
-                                viewType
-                            });
-
-                            const bgColors = ['bg-teal-50', 'bg-red-50', 'bg-blue-50'];
-                            
-                            return (
-                                <div
-                                    key={deviceKey}
-                                    className={`p-4 ${bgColors[index % bgColors.length]} rounded-lg`}
-                                >
-                                    <h3 className="font-medium">{device.name} Usage</h3>
-                                    <p>Total energy used: {insights.totalEnergy.toFixed(3)} kWh</p>
-                                    <p>Active for {insights.activeHours} hours</p>
-                                    {insights.peakHour.value > 0 && (
-                                        <p>Peak usage at {insights.peakHour.hour}:00 ({insights.peakHour.value.toFixed(3)} kWh)</p>
-                                    )}
-                                </div>
-                            );
-                        } catch (error) {
-                            return (
-                                <div key={deviceKey} className={`p-4 bg-gray-50 rounded-lg`}>
-                                    <h3 className="font-medium">{device.name}</h3>
-                                    <p>Unable to calculate insights for this period</p>
-                                </div>
-                            );
-                        }
-                    })}
+                {/* Date Range Info - To help users understand what data is being shown */}
+                <div className="text-sm text-gray-600 mb-4 text-center sm:text-left">
+                    Showing data from {formatDateRange(timeRange.start, timeRange.end, viewType)}
+                    {data.length === 0 && " (No data available for this period)"}
                 </div>
-                </CardContent>
-            </Card>
+
+                {/* Dynamic Device Summary Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {Object.entries(deviceData).map(([deviceKey, device]) => (
+                        <Card key={deviceKey} className="shadow-sm">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                                    <Activity className="w-5 h-5" />
+                                    {device.name}
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                            <div className="space-y-1">
+                                <p className="text-sm text-muted-foreground">Device activity</p>
+                                <p className="text-lg font-medium">
+                                {(() => {
+                                    if (!data || data.length === 0) {
+                                        return 'No active data for this period';
+                                    }
+                                    
+                                    try {
+                                        const insights = getDeviceInsights({
+                                            deviceData: data,
+                                            deviceKey,
+                                            deviceInfo: device,
+                                            viewType
+                                        });
+                                        
+                                        return `${insights.activeHours} hours of use`;
+                                    } catch (error) {
+                                        return 'Data unavailable';
+                                    }
+                                })()}
+                                </p>
+                            </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+
+                {/* Chart Card */}
+                <Card className="shadow">
+                    <CardContent className="pt-6">
+                    {data.length === 0 ? (
+                        <div className="flex justify-center items-center h-60 sm:h-80">
+                            <p>No data available for this time period</p>
+                        </div>
+                    ) : (
+                        <div className="h-60 sm:h-80">
+                            <ResponsiveContainer width="100%" height="100%">
+                            <LineChart
+                                data={data}
+                                margin={{ 
+                                    top: 15, 
+                                    right: 10, 
+                                    left: 0, 
+                                    bottom: 20 
+                                }}
+                            >
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis
+                                    dataKey="timestamp"
+                                    tickFormatter={(value) => {
+                                        const date = new Date(value);
+                                        if (viewType === 'week') {
+                                        // For week view, show weekday + day number, without repeating
+                                        return date.toLocaleDateString('en-AU', {
+                                            weekday: 'short',
+                                            day: 'numeric'
+                                        });
+                                        }
+                                        // For day view, show hour
+                                        return `${date.getHours().toString().padStart(2, '0')}:00`;
+                                    }}
+                                    label={{ 
+                                        value: viewType === 'week' ? 'Date' : 'Time of Day', 
+                                        position: 'insideBottom',
+                                        offset: -10,
+                                        style: { fontSize: '0.75rem' }
+                                    }}
+                                    tick={{ fontSize: 10 }}
+                                    height={35}
+                                />
+                                <YAxis 
+                                    label={{ 
+                                        value: 'Energy (kW)', 
+                                        angle: -90, 
+                                        position: 'insideLeft',
+                                        offset: -5,
+                                        style: { fontSize: '0.75rem' }
+                                    }}
+                                    tick={{ fontSize: 10 }}
+                                    width={40}
+                                />
+                                <Tooltip
+                                    formatter={(value: number, name: string) => {
+                                        const deviceInfo = Object.values(deviceData).find(
+                                            device => device.name.toLowerCase().replace(/\\s+/g, '_') === name
+                                        );
+                                        return [`${value.toFixed(3)} kW`, deviceInfo?.name || name];
+                                    }}
+                                    labelFormatter={(label) => {
+                                        const date = new Date(label);
+                                        return date.toLocaleDateString('en-AU', {
+                                            weekday: 'long',
+                                            day: '2-digit',
+                                            month: 'short',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        });
+                                    }}
+                                    contentStyle={{ fontSize: '0.875rem' }}
+                                />
+                                <Legend 
+                                    verticalAlign="top" 
+                                    height={30}
+                                    wrapperStyle={{ fontSize: '0.75rem' }}
+                                />
+                                {Object.entries(deviceData).map(([deviceKey, device], index) => {
+                                    const deviceName = device.name.toLowerCase().replace(/\\s+/g, '_');
+                                    const colors = ['#2dd4bf', '#dc2626', '#2563eb'];
+                                    return (
+                                        <Line
+                                            key={deviceKey}
+                                            type="monotone"
+                                            dataKey={deviceName}
+                                            stroke={colors[index % colors.length]}
+                                            name={device.name}
+                                            strokeWidth={2}
+                                            dot={viewType === 'week'} // Show dots only for week view
+                                        />
+                                    );
+                                })}
+                            </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                    )}
+                    </CardContent>
+                </Card>
+
+                {/* Daily Insights Section */}
+                <Card className="shadow">
+                    <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                        <Activity className="w-5 h-5" />
+                        Usage Insights
+                    </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                    <div className="space-y-4">
+                        {Object.entries(deviceData).map(([deviceKey, device], index) => {
+                            // Skip if no data for this time period
+                            if (data.length === 0) {
+                                return (
+                                    <div key={deviceKey} className="p-4 bg-gray-50 rounded-lg">
+                                        <h3 className="font-medium text-sm sm:text-base">{device.name}</h3>
+                                        <p className="text-sm">No usage data available for this time period</p>
+                                    </div>
+                                );
+                            }
+
+                            try {
+                                const insights = getDeviceInsights({
+                                    deviceData: data,
+                                    deviceKey,
+                                    deviceInfo: device,
+                                    viewType
+                                });
+
+                                const bgColors = ['bg-teal-50', 'bg-red-50', 'bg-blue-50'];
+                                
+                                return (
+                                    <div
+                                        key={deviceKey}
+                                        className={`p-4 ${bgColors[index % bgColors.length]} rounded-lg`}
+                                    >
+                                        <h3 className="font-medium text-sm sm:text-base">{device.name} Usage</h3>
+                                        <div className="text-sm space-y-1 mt-1">
+                                            <p>Total energy used: {insights.totalEnergy.toFixed(3)} kWh</p>
+                                            <p>Active for {insights.activeHours} hours</p>
+                                            {insights.peakHour.value > 0 && (
+                                                <p>Peak usage at {insights.peakHour.hour}:00 ({insights.peakHour.value.toFixed(3)} kWh)</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            } catch (error) {
+                                return (
+                                    <div key={deviceKey} className={`p-4 bg-gray-50 rounded-lg`}>
+                                        <h3 className="font-medium text-sm sm:text-base">{device.name}</h3>
+                                        <p className="text-sm">Unable to calculate insights for this period</p>
+                                    </div>
+                                );
+                            }
+                        })}
+                    </div>
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     );
 }
