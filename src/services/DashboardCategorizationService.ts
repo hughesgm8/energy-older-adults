@@ -43,15 +43,15 @@ class DeviceCategorizationService {
       insightTemplate: 'Your TV was active for {duration}, consuming {totalEnergy} kWh.',
       thresholdValue: DEFAULT_THRESHOLDS.entertainment
     },
-    'smartlamp': {
-      name: 'Smart Lamp',
+    'sonoslamp': {
+      name: 'Sonos Lamp',
       category: 'Smart Lighting',
       consumptionType: 'continuous',
-      insightTemplate: 'Your smart lamp was used for {duration}, with standby power always present.',
+      insightTemplate: 'Your Sonos lamp was used for {duration}, with standby power always present.',
       thresholdValue: DEFAULT_THRESHOLDS.lighting
     },
-    'game console': {
-      name: 'Gaming Console',
+    'switch': {
+      name: 'Nintendo Switch',
       category: 'Entertainment',
       consumptionType: 'intermittent',
       insightTemplate: 'Your gaming device was used for {duration}, with peak usage at {peakHour}.',
@@ -71,113 +71,108 @@ class DeviceCategorizationService {
 
   public async loadCategorizationsFromCSV() {
     try {
-        const response = await fetch('/Energy Device Categorizations.csv');
-        if (!response.ok) {
-            console.warn('Failed to fetch device categorizations CSV, using defaults');
-            return;
-        }
-
-        const csvText = await response.text();
-
-        Papa.parse(csvText, {
-            header: true,
-            complete: (results) => {
-                const categories: DeviceCategorization = {};
-
-                results.data.forEach((row: any) => {
-                    if (row.Device) {
-                        const deviceKey = row.Device.toLowerCase().replace(/\s+/g, '');
-                        const consumptionType = row['Consumption Type']?.toLowerCase() as ConsumptionType;
-
-                        // Determine threshold based on category and consumption type
-                        let threshold = DEFAULT_THRESHOLDS.default;
-                        if (consumptionType === 'continuous') {
-                            threshold = DEFAULT_THRESHOLDS.continuous;
-                        } else if (consumptionType === 'intermittent') {
-                            if (row.Category?.toLowerCase().includes('entertainment')) {
-                                threshold = DEFAULT_THRESHOLDS.entertainment;
-                            } else if (row.Category?.toLowerCase().includes('kitchen')) {
-                                threshold = DEFAULT_THRESHOLDS.kitchen;
-                            } else if (row.Category?.toLowerCase().includes('light')) {
-                                threshold = DEFAULT_THRESHOLDS.lighting;
-                            } else {
-                                threshold = DEFAULT_THRESHOLDS.intermittent;
-                            }
-                        }
-
-                        categories[deviceKey] = {
-                            name: row.Device,
-                            category: row.Category || 'Unknown',
-                            consumptionType: consumptionType || 'intermittent',
-                            insightTemplate: row['Insight Template'] || `Your ${row.Device} was used for {duration}.`,
-                            thresholdValue: threshold
-                        };
-
-                        // Log the insight template for debugging
-                        console.log(`Loaded insight template for ${row.Device}: ${categories[deviceKey].insightTemplate}`);
-                    }
-                });
-
-                // Merge with defaults, giving priority to CSV data
-                this.categorizations = { ...this.defaultCategorizations, ...categories };
-                console.log('Device categorizations loaded:', Object.keys(this.categorizations).length);
-            },
-            error: (error: any) => {
-                console.error('Error parsing device categorizations CSV:', error);
+      const response = await fetch('/src/services/Energy Device Categorizations.csv');
+      if (!response.ok) {
+        console.warn('Failed to fetch device categorizations CSV, using defaults');
+        return;
+      }
+      
+      const csvText = await response.text();
+      
+      Papa.parse(csvText, {
+        header: true,
+        complete: (results) => {
+          const categories: DeviceCategorization = {};
+          
+          results.data.forEach((row: any) => {
+            if (row.Device) {
+              const deviceKey = row.Device.toLowerCase().replace(/\s+/g, '');
+              const consumptionType = row['Consumption Type']?.toLowerCase() as ConsumptionType;
+              
+              // Determine threshold based on category and consumption type
+              let threshold = DEFAULT_THRESHOLDS.default;
+              if (consumptionType === 'continuous') {
+                threshold = DEFAULT_THRESHOLDS.continuous;
+              } else if (consumptionType === 'intermittent') {
+                if (row.Category?.toLowerCase().includes('entertainment')) {
+                  threshold = DEFAULT_THRESHOLDS.entertainment;
+                } else if (row.Category?.toLowerCase().includes('kitchen')) {
+                  threshold = DEFAULT_THRESHOLDS.kitchen;
+                } else if (row.Category?.toLowerCase().includes('light')) {
+                  threshold = DEFAULT_THRESHOLDS.lighting;
+                } else {
+                  threshold = DEFAULT_THRESHOLDS.intermittent;
+                }
+              }
+              
+              categories[deviceKey] = {
+                name: row.Device,
+                category: row.Category || 'Unknown',
+                consumptionType: consumptionType || 'intermittent',
+                insightTemplate: row['Insight Template'] || `Your ${row.Device} was used for {duration}.`,
+                thresholdValue: threshold
+              };
             }
-        });
+          });
+          
+          // Merge with defaults, giving priority to CSV data
+          this.categorizations = { ...this.defaultCategorizations, ...categories };
+          console.log('Device categorizations loaded:', Object.keys(this.categorizations).length);
+        },
+        error: (error: any) => {
+          console.error('Error parsing device categorizations CSV:', error);
+        }
+      });
     } catch (error) {
-        console.error('Failed to load device categorizations:', error);
+      console.error('Failed to load device categorizations:', error);
     }
   }
 
   public getDeviceCategory(deviceName: string): CategorizedDevice {
     if (!this.isInitialized) {
-        this.initializeDefaultCategorizations();
+      this.initializeDefaultCategorizations();
     }
-
+    
     // Normalize device name for lookup
     const normalizedName = deviceName.toLowerCase().replace(/\s+/g, '');
-
+    
     // Try exact match first
     if (this.categorizations[normalizedName]) {
-        console.log(`Exact match found for ${deviceName}: ${this.categorizations[normalizedName].insightTemplate}`);
-        return this.categorizations[normalizedName];
+      return this.categorizations[normalizedName];
     }
-
+    
     // Try partial matches
     for (const [key, category] of Object.entries(this.categorizations)) {
-        if (normalizedName.includes(key) || key.includes(normalizedName)) {
-            console.log(`Partial match found for ${deviceName}: ${category.insightTemplate}`);
-            return category;
-        }
+      if (normalizedName.includes(key) || key.includes(normalizedName)) {
+        return category;
+      }
     }
-
+    
     // Apply heuristics to guess the device type if no match
     let category = 'Appliance';
     let consumptionType: ConsumptionType = 'intermittent';
     let threshold = DEFAULT_THRESHOLDS.default;
-
+    
     // Check for common device type indicators in the name
     if (normalizedName.includes('tv') || 
         normalizedName.includes('television') || 
         normalizedName.includes('console') ||
         normalizedName.includes('gaming')) {
-        category = 'Entertainment';
-        threshold = DEFAULT_THRESHOLDS.entertainment;
+      category = 'Entertainment';
+      threshold = DEFAULT_THRESHOLDS.entertainment;
     } else if (normalizedName.includes('lamp') || 
                normalizedName.includes('light') || 
                normalizedName.includes('bulb')) {
-        category = 'Lighting';
-        threshold = DEFAULT_THRESHOLDS.lighting;
+      category = 'Lighting';
+      threshold = DEFAULT_THRESHOLDS.lighting;
     } else if (normalizedName.includes('fridge') || 
                normalizedName.includes('microwave') || 
                normalizedName.includes('oven') ||
                normalizedName.includes('toaster')) {
-        category = 'Kitchen';
-        threshold = DEFAULT_THRESHOLDS.kitchen;
+      category = 'Kitchen';
+      threshold = DEFAULT_THRESHOLDS.kitchen;
     }
-
+    
     // Check if it might be a smart device by name
     if (normalizedName.includes('smart') || 
         normalizedName.includes('wifi') || 
@@ -185,22 +180,19 @@ class DeviceCategorizationService {
         normalizedName.includes('sonos') ||
         normalizedName.includes('alexa') ||
         normalizedName.includes('google')) {
-        category = 'Smart Home';
-        consumptionType = 'continuous';
-        threshold = DEFAULT_THRESHOLDS.continuous;
+      category = 'Smart Home';
+      consumptionType = 'continuous';
+      threshold = DEFAULT_THRESHOLDS.continuous;
     }
-
+    
     // Create a fallback category
-    const fallbackCategory = {
-        name: deviceName,
-        category: category,
-        consumptionType: consumptionType,
-        insightTemplate: `Your ${deviceName} was used for {duration}, consuming {totalEnergy} kWh.`,
-        thresholdValue: threshold
+    return {
+      name: deviceName,
+      category: category,
+      consumptionType: consumptionType,
+      insightTemplate: `Your ${deviceName} was used for {duration}, consuming {totalEnergy} kWh.`,
+      thresholdValue: threshold
     };
-
-    console.log(`Fallback category used for ${deviceName}: ${fallbackCategory.insightTemplate}`);
-    return fallbackCategory;
   }
 
   public getThresholdForDevice(deviceName: string): number {
