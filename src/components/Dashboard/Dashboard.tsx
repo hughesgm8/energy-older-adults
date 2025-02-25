@@ -7,21 +7,7 @@ import { DeviceDataResponse, DeviceInfo, DeviceReading, DeviceInsightsParams, De
 import { TimeRange, ViewType } from '../../types/views';
 import { ViewControls } from '../ViewControls/ViewControls';
 import { useParams } from 'react-router-dom';
-
-interface EnergyThresholds {
-  TV: number;
-  LAMP: number;
-  SWITCH: number;
-  ACTIVE: number; // general threshold as fallback
-  [key: string]: number; // This allows for dynamic string indexing
-}
-
-const ENERGY_THRESHOLDS: EnergyThresholds = {
-    TV: 0.01,
-    LAMP: 0.003,
-    SWITCH: 0.001,
-    ACTIVE: 0.001
-};
+import { deviceCategorizationService } from '../../services/DashboardCategorizationService';
 
 export function Dashboard() {
     const { participantId } = useParams();
@@ -171,12 +157,10 @@ export function Dashboard() {
             throw new Error('Missing required parameters for device insights');
         }
     
-        const deviceName = deviceInfo.name.toLowerCase().replace(/\\s+/g, '_');
-        const activeThreshold = deviceName.includes('tv') 
-            ? ENERGY_THRESHOLDS.TV
-            : deviceName.includes('lamp')
-            ? ENERGY_THRESHOLDS.LAMP
-            : ENERGY_THRESHOLDS.SWITCH;
+        const deviceName = deviceInfo.name.toLowerCase().replace(/\s+/g, '_');
+        
+        // Get threshold from the categorization service
+        const activeThreshold = deviceCategorizationService.getThresholdForDevice(deviceInfo.name);
     
         // Filter active readings
         const activeReadings = deviceData.filter(reading => {
@@ -193,16 +177,22 @@ export function Dashboard() {
         // Calculate hours from hourly readings
         const activeHours = activeReadings.length;
     
+        // Find peak hour
+        const peakHour = activeReadings.reduce((max, reading) => {
+            const value = reading[deviceName];
+            if (typeof value !== 'number') return max;
+            return value > max.value 
+                ? { hour: reading.timestamp.getHours(), value } 
+                : max;
+        }, { hour: 0, value: 0 });
+
         return {
             totalEnergy,
             activeHours,
-            peakHour: activeReadings.reduce((max, reading) => {
-                const value = reading[deviceName];
-                if (typeof value !== 'number') return max;
-                return value > max.value 
-                    ? { hour: reading.timestamp.getHours(), value } 
-                    : max;
-            }, { hour: 0, value: 0 })
+            peakHour,
+            deviceCategory: deviceCategorizationService.getDeviceCategory2(deviceInfo.name),
+            consumptionType: deviceCategorizationService.getConsumptionType(deviceInfo.name),
+            insightTemplate: deviceCategorizationService.getInsightTemplate(deviceInfo.name)
         };
     };
 
@@ -322,6 +312,26 @@ export function Dashboard() {
         return `${startStr} - ${endStr}`;
     };
 
+    // Format insight text using template and device data
+    const formatInsightText = (insightTemplate: string, insights: DeviceInsights) => {
+        let text = insightTemplate;
+        
+        // Replace placeholders with actual values
+        text = text.replace('{duration}', `${insights.activeHours} hours`);
+        text = text.replace('{totalEnergy}', insights.totalEnergy.toFixed(3));
+        
+        if (insights.peakHour && insights.peakHour.value > 0) {
+            const peakHourStr = `${insights.peakHour.hour}:00`;
+            text = text.replace('{peakHour}', peakHourStr);
+        } else {
+            // Remove any reference to peak hour if there isn't one
+            text = text.replace(/ with peak usage at {peakHour}\./, '.');
+            text = text.replace(/, with peak usage at {peakHour}/, '');
+        }
+        
+        return text;
+    };
+
     if (isLoading) {
         return <div className="flex justify-center items-center min-h-screen p-4">Loading dashboard data...</div>;
     }
@@ -335,6 +345,38 @@ export function Dashboard() {
     }
     
     const timeRange = getTimeRange(currentDate, viewType);
+
+    // Get color based on device category
+    const getCategoryColor = (deviceName: string) => {
+        const category = deviceCategorizationService.getDeviceCategory2(deviceName);
+        const colorMap: Record<string, string> = {
+            'Entertainment': '#2563eb', // blue
+            'Smart Lighting': '#2dd4bf', // teal
+            'Kitchen': '#dc2626', // red
+            'Smart Home': '#8b5cf6', // purple
+            'Heating': '#f59e0b', // amber
+            'Cooling': '#3b82f6', // sky blue
+            'Home Office': '#10b981', // emerald
+        };
+        
+        return colorMap[category] || '#6b7280'; // gray as default
+    };
+
+    // Get background color for insight cards based on device category
+    const getCategoryBgColor = (deviceName: string) => {
+        const category = deviceCategorizationService.getDeviceCategory2(deviceName);
+        const bgColorMap: Record<string, string> = {
+            'Entertainment': 'bg-blue-50',
+            'Smart Lighting': 'bg-teal-50',
+            'Kitchen': 'bg-red-50',
+            'Smart Home': 'bg-purple-50',
+            'Heating': 'bg-amber-50',
+            'Cooling': 'bg-sky-50',
+            'Home Office': 'bg-emerald-50'
+        };
+        
+        return bgColorMap[category] || 'bg-gray-50';
+    };
 
     return (
         <div className="min-h-screen bg-background">
@@ -369,7 +411,9 @@ export function Dashboard() {
                             </CardHeader>
                             <CardContent>
                             <div className="space-y-1">
-                                <p className="text-sm text-muted-foreground">Device activity</p>
+                                <p className="text-sm text-muted-foreground">
+                                    {deviceCategorizationService.getDeviceCategory2(device.name)}
+                                </p>
                                 <p className="text-lg font-medium">
                                 {(() => {
                                     if (!data || data.length === 0) {
@@ -453,7 +497,7 @@ export function Dashboard() {
                                 <Tooltip
                                     formatter={(value: number, name: string) => {
                                         const deviceInfo = Object.values(deviceData).find(
-                                            device => device.name.toLowerCase().replace(/\\s+/g, '_') === name
+                                            device => device.name.toLowerCase().replace(/\s+/g, '_') === name
                                         );
                                         return [`${value.toFixed(3)} kW`, deviceInfo?.name || name];
                                     }}
@@ -474,15 +518,17 @@ export function Dashboard() {
                                     height={30}
                                     wrapperStyle={{ fontSize: '0.75rem' }}
                                 />
-                                {Object.entries(deviceData).map(([deviceKey, device], index) => {
-                                    const deviceName = device.name.toLowerCase().replace(/\\s+/g, '_');
-                                    const colors = ['#2dd4bf', '#dc2626', '#2563eb'];
+                                {Object.entries(deviceData).map(([deviceKey, device]) => {
+                                    const deviceName = device.name.toLowerCase().replace(/\s+/g, '_');
+                                    // Use category-based colors
+                                    const color = getCategoryColor(device.name);
+                                    
                                     return (
                                         <Line
                                             key={deviceKey}
                                             type="monotone"
                                             dataKey={deviceName}
-                                            stroke={colors[index % colors.length]}
+                                            stroke={color}
                                             name={device.name}
                                             strokeWidth={2}
                                             dot={viewType === 'week'} // Show dots only for week view
@@ -506,7 +552,7 @@ export function Dashboard() {
                     </CardHeader>
                     <CardContent>
                     <div className="space-y-4">
-                        {Object.entries(deviceData).map(([deviceKey, device], index) => {
+                        {Object.entries(deviceData).map(([deviceKey, device]) => {
                             // Skip if no data for this time period
                             if (data.length === 0) {
                                 return (
@@ -525,20 +571,21 @@ export function Dashboard() {
                                     viewType
                                 });
 
-                                const bgColors = ['bg-teal-50', 'bg-red-50', 'bg-blue-50'];
+                                // Use category-based background colors
+                                const bgColor = getCategoryBgColor(device.name);
                                 
                                 return (
                                     <div
                                         key={deviceKey}
-                                        className={`p-4 ${bgColors[index % bgColors.length]} rounded-lg`}
+                                        className={`p-4 ${bgColor} rounded-lg`}
                                     >
                                         <h3 className="font-medium text-sm sm:text-base">{device.name} Usage</h3>
                                         <div className="text-sm space-y-1 mt-1">
-                                            <p>Total energy used: {insights.totalEnergy.toFixed(3)} kWh</p>
-                                            <p>Active for {insights.activeHours} hours</p>
-                                            {insights.peakHour.value > 0 && (
-                                                <p>Peak usage at {insights.peakHour.hour}:00 ({insights.peakHour.value.toFixed(3)} kWh)</p>
-                                            )}
+                                            <p>{formatInsightText(insights.insightTemplate, insights)}</p>
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                Category: {insights.deviceCategory} • 
+                                                Type: {insights.consumptionType === 'continuous' ? 'Always-on' : 'On-demand'}
+                                            </p>
                                         </div>
                                     </div>
                                 );

@@ -39,4 +39,7 @@ export interface DeviceInsights {
         hour: number; 
         value: number 
     };
+    deviceCategory: string;
+    consumptionType: string;
+    insightTemplate: string;
 }
