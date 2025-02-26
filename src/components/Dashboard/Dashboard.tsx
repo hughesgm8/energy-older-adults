@@ -319,6 +319,10 @@ export function Dashboard() {
         // Replace placeholders with actual values
         text = text.replace('{duration}', `${insights.activeHours} hours`);
         text = text.replace('{totalEnergy}', insights.totalEnergy.toFixed(3));
+        text = text.replace('<number>', `${insights.activeHours}`);
+        
+        // Handle the today/this week formatting
+        text = text.replace('[today]/[this week]', viewType === 'day' ? 'today' : 'this week');
         
         if (insights.peakHour && insights.peakHour.value > 0) {
             const peakHourStr = `${insights.peakHour.hour}:00`;
