@@ -23,10 +23,10 @@ interface DeviceCategorization {
 // Default thresholds based on consumption type
 const DEFAULT_THRESHOLDS = {
   continuous: 0.003, // For always-on smart devices (like Sonos)
-  intermittent: 0.01, // For devices that only use energy when active (like toasters)
-  entertainment: 0.01, // For TVs, game consoles, etc.
+  intermittent: 0.005, // For devices that only use energy when active (like toasters)
+  entertainment: 0.004, // For TVs, game consoles, etc.
   lighting: 0.003, // For lamps and lights
-  kitchen: 0.02, // For kitchen appliances (higher power)
+  kitchen: 0.005, // For kitchen appliances (higher power)
   default: 0.005 // Fallback
 };
 
