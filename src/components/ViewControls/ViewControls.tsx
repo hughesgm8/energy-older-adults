@@ -5,28 +5,29 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 export function ViewControls({ viewType, onViewTypeChange, onNavigate, currentDate }: ViewControlsProps) {
   
   const formatDateRange = (date: Date, viewType: ViewType) => {
-    // For day view, just show the current date
     if (viewType === 'day') {
-      return date.toLocaleDateString('en-AU', { 
-        day: 'numeric', 
-        month: 'short'
-      });
+        return date.toLocaleDateString('en-AU', { 
+            day: 'numeric', 
+            month: 'short'
+        });
     }
     
-    // For week view, calculate start date and show range
-    const startDate = new Date(date);
-    startDate.setDate(date.getDate() - 6); // Go back 6 days to make a 7-day week
+    // For week view, calculate Sunday to Saturday
+    const sunday = new Date(date);
+    sunday.setDate(date.getDate() - date.getDay()); // Go back to Sunday
     
-    // Format the start date
-    const startStr = startDate.toLocaleDateString('en-AU', { 
-      day: 'numeric', 
-      month: 'short'
+    const saturday = new Date(sunday);
+    saturday.setDate(sunday.getDate() + 6); // Go to Saturday
+    
+    // Format the dates
+    const startStr = sunday.toLocaleDateString('en-AU', { 
+        day: 'numeric', 
+        month: 'short'
     });
     
-    // Format the end date
-    const endStr = date.toLocaleDateString('en-AU', { 
-      day: 'numeric', 
-      month: 'short'
+    const endStr = saturday.toLocaleDateString('en-AU', { 
+        day: 'numeric', 
+        month: 'short'
     });
     
     return `${startStr} - ${endStr}`;

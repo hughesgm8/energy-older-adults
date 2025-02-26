@@ -103,50 +103,60 @@ export function Dashboard() {
         if (!availableDateRange) {
             return { start: date, end: date };
         }
-
-        // Set end date to current date, respecting data boundaries
-        let end = new Date(date);
-        end.setHours(23, 59, 59, 999);
-        
-        // Don't allow end date beyond data boundaries
-        if (end > availableDateRange.end) {
-            end = new Date(availableDateRange.end);
-        }
-        
-        // Set start date based on view type
-        let start = new Date(end);
+    
         if (type === 'week') {
-            // Go back 6 days from end date to make 7 days total
-            start.setDate(start.getDate() - 6);
+            // Find the Sunday at or before the current date
+            const start = new Date(date);
+            start.setDate(date.getDate() - date.getDay()); // Go back to Sunday
+            start.setHours(0, 0, 0, 0);
+            
+            // End date is Saturday (6 days after Sunday)
+            const end = new Date(start);
+            end.setDate(start.getDate() + 6);
+            end.setHours(23, 59, 59, 999);
+            
+            // For display purposes we want to show the full week, even if some days are in the future
+            // We only adjust data boundaries when actually fetching data
+            return { start, end };
+        } else {
+            // Day view (unchanged)
+            let end = new Date(date);
+            end.setHours(23, 59, 59, 999);
+            let start = new Date(date);
+            start.setHours(0, 0, 0, 0);
+            
+            return { start, end };
         }
-        start.setHours(0, 0, 0, 0);
-        
-        // Don't allow start date before data boundaries
-        if (start < availableDateRange.start) {
-            start = new Date(availableDateRange.start);
-        }
-        
-        return { start, end };
     };
 
     const handleNavigate = (direction: 'prev' | 'next') => {
         if (!availableDateRange) return;
     
         const newDate = new Date(currentDate);
-        const days = viewType === 'week' ? 7 : 1;
         
         if (direction === 'prev') {
-            newDate.setDate(newDate.getDate() - days);
-            // Don't go before first available date
-            if (newDate < availableDateRange.start) {
-                newDate.setTime(availableDateRange.start.getTime());
+            if (viewType === 'week') {
+                // Move back exactly one week (7 days)
+                newDate.setDate(newDate.getDate() - 7);
+            } else {
+                // Move back one day
+                newDate.setDate(newDate.getDate() - 1);
             }
         } else {
-            newDate.setDate(newDate.getDate() + days);
-            // Don't go beyond last available date
-            if (newDate > availableDateRange.end) {
-                newDate.setTime(availableDateRange.end.getTime());
+            if (viewType === 'week') {
+                // Move forward exactly one week (7 days)
+                newDate.setDate(newDate.getDate() + 7);
+            } else {
+                // Move forward one day
+                newDate.setDate(newDate.getDate() + 1);
             }
+        }
+        
+        // Data boundary check should be separate from view display
+        if (newDate < availableDateRange.start) {
+            newDate.setTime(availableDateRange.start.getTime());
+        } else if (newDate > availableDateRange.end) {
+            newDate.setTime(availableDateRange.end.getTime());
         }
         
         setCurrentDate(newDate);
