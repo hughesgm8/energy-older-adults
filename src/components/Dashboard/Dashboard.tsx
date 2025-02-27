@@ -9,6 +9,7 @@ import { ViewControls } from '../ViewControls/ViewControls';
 import { useParams } from 'react-router-dom';
 import { deviceCategorizationService } from '../../services/DashboardCategorizationService';
 import { ComparisonResult, participantComparisonService } from '@/services/ParticipantComparisonService';
+import DeviceComparisonChart from '../ComparisonChart/DeviceComparisonChart';
 
 export function Dashboard() {
     const { participantId } = useParams();
@@ -650,37 +651,23 @@ export function Dashboard() {
                         No comparison data available for this time period.
                     </p>
                     ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                         {comparisons.map((comparison) => (
                         <div key={comparison.deviceName} className="p-4 bg-blue-50 rounded-lg">
-                            <h3 className="font-medium text-sm sm:text-base">
+                            <h3 className="font-medium text-sm sm:text-base mb-2">
                             {comparison.deviceName} Comparison
                             </h3>
-                            <div className="text-sm mt-1">
-                            <p>
-                                You used your {comparison.deviceName} {Math.abs(comparison.percentDifference).toFixed(0)}% 
-                                {comparison.isLowerThanAverage ? " less " : " more "} 
-                                than the average of other participants {viewType === 'day' ? 'today' : 'this week'}.
+                            <p className="text-sm">
+                            Your {comparison.deviceName} usage compared to other participants {viewType === 'day' ? 'today' : 'this week'}:
                             </p>
                             
-                            <div className="mt-3 bg-white p-3 rounded-md flex items-center">
-                                <div className="w-full">
-                                <div className="flex justify-between text-xs text-gray-600 mb-1">
-                                    <span>You: {comparison.yourUsage.toFixed(3)} kWh</span>
-                                    <span>Others: {comparison.averageUsage.toFixed(3)} kWh</span>
-                                </div>
-                                
-                                <div className="h-4 w-full bg-gray-200 rounded-full overflow-hidden">
-                                    <div 
-                                    className={`h-full ${comparison.isLowerThanAverage ? 'bg-green-500' : 'bg-blue-500'}`} 
-                                    style={{ 
-                                        width: `${Math.min(100, (comparison.yourUsage / Math.max(comparison.yourUsage, comparison.averageUsage)) * 100)}%` 
-                                    }}
-                                    ></div>
-                                </div>
-                                </div>
-                            </div>
-                            </div>
+                            <DeviceComparisonChart
+                            deviceName={comparison.deviceName}
+                            yourUsage={comparison.yourUsage}
+                            averageUsage={comparison.averageUsage}
+                            percentDifference={comparison.percentDifference}
+                            isLowerThanAverage={comparison.isLowerThanAverage}
+                            />
                         </div>
                         ))}
                     </div>

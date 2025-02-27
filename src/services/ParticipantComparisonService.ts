@@ -1,5 +1,6 @@
 // src/services/ParticipantComparisonService.ts
 import { DeviceDataResponse } from '../types/device';
+import { TimeRange, ViewType } from '../types/views';
 
 export interface ComparisonResult {
   deviceName: string;
@@ -30,27 +31,51 @@ class ParticipantComparisonService {
   }
   
   private initializeMockData() {
-    // Create mock data for participants P1, P2, P3
+    // Create mock data for participants P0, P1, P2, P3
+    // For P0 we'll make some devices higher usage and some lower
     this.mockParticipantData = {
-      'P1': {
+      'P0': {
         'TV': {
           name: 'TV',
           hourly: {
-            data: this.generateMockHourlyData(0.15, 0.05), // Higher TV usage
+            data: this.generateMockHourlyData(0.12, 0.04), // Higher than average
             timestamps: this.generateTimestamps(168)
           }
         },
         'SonosLamp': {
           name: 'SonosLamp',
           hourly: {
-            data: this.generateMockHourlyData(0.003, 0.001), // Lower lamp usage
+            data: this.generateMockHourlyData(0.004, 0.002), // Lower than average
             timestamps: this.generateTimestamps(168)
           }
         },
         'Switch': {
           name: 'Switch',
           hourly: {
-            data: this.generateMockHourlyData(0.006, 0.002), // Similar Switch usage
+            data: this.generateMockHourlyData(0.008, 0.003), // Higher than average
+            timestamps: this.generateTimestamps(168)
+          }
+        }
+      },
+      'P1': {
+        'TV': {
+          name: 'TV',
+          hourly: {
+            data: this.generateMockHourlyData(0.09, 0.03), // Lower TV usage
+            timestamps: this.generateTimestamps(168)
+          }
+        },
+        'SonosLamp': {
+          name: 'SonosLamp',
+          hourly: {
+            data: this.generateMockHourlyData(0.006, 0.002), // Higher lamp usage
+            timestamps: this.generateTimestamps(168)
+          }
+        },
+        'Switch': {
+          name: 'Switch',
+          hourly: {
+            data: this.generateMockHourlyData(0.005, 0.002), // Lower Switch usage
             timestamps: this.generateTimestamps(168)
           }
         }
@@ -69,25 +94,37 @@ class ParticipantComparisonService {
             data: this.generateMockHourlyData(0.007, 0.002), // Higher lamp usage
             timestamps: this.generateTimestamps(168)
           }
+        },
+        'Switch': {
+          name: 'Switch',
+          hourly: {
+            data: this.generateMockHourlyData(0.007, 0.003), // Similar Switch usage
+            timestamps: this.generateTimestamps(168)
+          }
         }
-        // No Switch for this participant
       },
       'P3': {
         'TV': {
           name: 'TV',
           hourly: {
-            data: this.generateMockHourlyData(0.12, 0.04), // Medium TV usage
+            data: this.generateMockHourlyData(0.14, 0.05), // Higher TV usage
+            timestamps: this.generateTimestamps(168)
+          }
+        },
+        'SonosLamp': {
+          name: 'SonosLamp',
+          hourly: {
+            data: this.generateMockHourlyData(0.009, 0.003), // Highest lamp usage
             timestamps: this.generateTimestamps(168)
           }
         },
         'Switch': {
           name: 'Switch',
           hourly: {
-            data: this.generateMockHourlyData(0.012, 0.004), // Higher Switch usage
+            data: this.generateMockHourlyData(0.006, 0.002), // Medium Switch usage
             timestamps: this.generateTimestamps(168)
           }
         }
-        // No Sonos for this participant
       }
     };
   }
@@ -129,42 +166,62 @@ class ParticipantComparisonService {
     return data;
   }
   
-  // This is the main method that will be called from the Dashboard component
   public async getComparisons(
     currentParticipantId: string, 
     currentDeviceData: DeviceDataResponse, 
-    timeRange: { start: Date, end: Date },
-    viewType: 'day' | 'week'
+    timeRange: TimeRange,
+    viewType: ViewType
   ): Promise<ComparisonResult[]> {
-    // Get all participants' data
-    const allParticipantsData = await this.fetchAllParticipantsData();
+    // For the study prototype, we'll use the mock data
+    // Initialize mock data if it hasn't been done yet
+    if (Object.keys(this.mockParticipantData).length === 0) {
+      this.initializeMockData();
+    }
     
-    // Initialize results array
     const results: ComparisonResult[] = [];
     
-    // Process each device for the current participant
+    // Calculate the total usage for the current participant
+    // and compare it with the average of other participants
     for (const [deviceKey, deviceInfo] of Object.entries(currentDeviceData)) {
-      // Calculate current participant's total usage for this device
-      const yourUsage = this.calculateTotalUsage(
-        deviceInfo, 
-        timeRange.start,
-        timeRange.end
-      );
+      // Get usage for the current device
+      let yourUsage = 0;
+      const hourlyData = deviceInfo.hourly.data;
+      for (let i = 0; i < hourlyData.length; i++) {
+        yourUsage += hourlyData[i];
+      }
       
-      // Find all other participants who have the same device
-      const otherParticipantsWithDevice: {id: string, usage: number}[] = [];
+      // Scale down usage based on time range for more realistic numbers
+      // (mock data is for a full week)
+      if (viewType === 'day') {
+        yourUsage = yourUsage / 7; // Approximate daily average
+        
+        // Add some random variation day to day (±20%)
+        const dailyVariation = 0.8 + Math.random() * 0.4; // 0.8 to 1.2
+        yourUsage *= dailyVariation;
+      }
       
-      for (const [participantId, participantData] of Object.entries(allParticipantsData)) {
-        // Skip current participant
+      // Get usage for other participants with the same device
+      const otherParticipantsWithDevice: Array<{id: string, usage: number}> = [];
+      
+      for (const [participantId, deviceData] of Object.entries(this.mockParticipantData)) {
+        // Skip the current participant
         if (participantId === currentParticipantId) continue;
         
         // Check if this participant has the same device
-        if (participantData[deviceKey]) {
-          const usage = this.calculateTotalUsage(
-            participantData[deviceKey],
-            timeRange.start,
-            timeRange.end
-          );
+        const deviceData2 = deviceData[deviceKey];
+        if (deviceData2) {
+          let usage = 0;
+          const hourlyData = deviceData2.hourly.data;
+          for (let i = 0; i < hourlyData.length; i++) {
+            usage += hourlyData[i];
+          }
+          
+          // Scale down for daily view
+          if (viewType === 'day') {
+            usage = usage / 7;
+            const dailyVariation = 0.8 + Math.random() * 0.4;
+            usage *= dailyVariation;
+          }
           
           otherParticipantsWithDevice.push({
             id: participantId,
@@ -173,9 +230,8 @@ class ParticipantComparisonService {
         }
       }
       
-      // Only generate comparison if at least one other participant has this device
+      // Calculate average usage
       if (otherParticipantsWithDevice.length > 0) {
-        // Calculate average usage among other participants
         const totalOtherUsage = otherParticipantsWithDevice.reduce(
           (sum, p) => sum + p.usage, 0
         );
@@ -198,16 +254,6 @@ class ParticipantComparisonService {
     }
     
     return results;
-  }
-  
-  private calculateTotalUsage(
-    deviceInfo: any, 
-    startDate: Date, 
-    endDate: Date
-  ): number {
-    // In a real implementation, we would filter by date range
-    // For the mock implementation, we'll just sum everything
-    return deviceInfo.hourly.data.reduce((sum: number, value: number) => sum + value, 0);
   }
 }
 
