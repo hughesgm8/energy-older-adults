@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { Activity } from 'lucide-react';
+import { Activity, Users } from 'lucide-react';
 import { DeviceDataResponse, DeviceInfo, DeviceReading, DeviceInsightsParams, DeviceInsights } from '../../types/device';
 import { TimeRange, ViewType } from '../../types/views';
 import { ViewControls } from '../ViewControls/ViewControls';
 import { useParams } from 'react-router-dom';
 import { deviceCategorizationService } from '../../services/DashboardCategorizationService';
+import { ComparisonResult, participantComparisonService } from '@/services/ParticipantComparisonService';
 
 export function Dashboard() {
     const { participantId } = useParams();
@@ -18,6 +19,7 @@ export function Dashboard() {
     const [viewType, setViewType] = useState<ViewType>('day');
     const [currentDate, setCurrentDate] = useState<Date>(new Date());
     const [availableDateRange, setAvailableDateRange] = useState<{ start: Date, end: Date } | null>(null);
+    const [comparisons, setComparisons] = useState<ComparisonResult[]>([]);
 
     const aggregateDataByDay = (hourlyData: DeviceReading[]): DeviceReading[] => {
         if (!hourlyData.length) return [];
@@ -82,6 +84,23 @@ export function Dashboard() {
             end: new Date(timestamps[timestamps.length - 1])
         };
     };
+
+    const fetchComparisons = async () => {
+        if (!participantId || !availableDateRange) return;
+        
+        try {
+          const results = await participantComparisonService.getComparisons(
+            participantId,
+            deviceData,
+            timeRange,
+            viewType
+          );
+          
+          setComparisons(results);
+        } catch (error) {
+          console.error('Error fetching comparisons:', error);
+        }
+      };
 
     useEffect(() => {
         if (Object.keys(deviceData).length > 0) {
@@ -295,6 +314,7 @@ export function Dashboard() {
         } catch (error) {
           console.error('Error processing data:', error);
         }
+        fetchComparisons();
       }, [deviceData, currentDate, viewType]);
 
     // Helper function to format date range for display
@@ -614,6 +634,58 @@ export function Dashboard() {
                         })}
                     </div>
                     </CardContent>
+                </Card>
+
+                {/* Social Comparison Section */}
+                <Card className="shadow">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                    <Users className="w-5 h-5" />
+                    Comparing Your Usage
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    {comparisons.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                        No comparison data available for this time period.
+                    </p>
+                    ) : (
+                    <div className="space-y-4">
+                        {comparisons.map((comparison) => (
+                        <div key={comparison.deviceName} className="p-4 bg-blue-50 rounded-lg">
+                            <h3 className="font-medium text-sm sm:text-base">
+                            {comparison.deviceName} Comparison
+                            </h3>
+                            <div className="text-sm mt-1">
+                            <p>
+                                You used your {comparison.deviceName} {Math.abs(comparison.percentDifference).toFixed(0)}% 
+                                {comparison.isLowerThanAverage ? " less " : " more "} 
+                                than the average of other participants {viewType === 'day' ? 'today' : 'this week'}.
+                            </p>
+                            
+                            <div className="mt-3 bg-white p-3 rounded-md flex items-center">
+                                <div className="w-full">
+                                <div className="flex justify-between text-xs text-gray-600 mb-1">
+                                    <span>You: {comparison.yourUsage.toFixed(3)} kWh</span>
+                                    <span>Others: {comparison.averageUsage.toFixed(3)} kWh</span>
+                                </div>
+                                
+                                <div className="h-4 w-full bg-gray-200 rounded-full overflow-hidden">
+                                    <div 
+                                    className={`h-full ${comparison.isLowerThanAverage ? 'bg-green-500' : 'bg-blue-500'}`} 
+                                    style={{ 
+                                        width: `${Math.min(100, (comparison.yourUsage / Math.max(comparison.yourUsage, comparison.averageUsage)) * 100)}%` 
+                                    }}
+                                    ></div>
+                                </div>
+                                </div>
+                            </div>
+                            </div>
+                        </div>
+                        ))}
+                    </div>
+                    )}
+                </CardContent>
                 </Card>
             </div>
         </div>
