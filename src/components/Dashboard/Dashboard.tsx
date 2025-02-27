@@ -642,7 +642,7 @@ export function Dashboard() {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                     <Users className="w-5 h-5" />
-                    Comparing Your Usage
+                    Energy Usage Comparisons
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -654,19 +654,13 @@ export function Dashboard() {
                     <div className="space-y-6">
                         {comparisons.map((comparison) => (
                         <div key={comparison.deviceName} className="p-4 bg-blue-50 rounded-lg">
-                            <h3 className="font-medium text-sm sm:text-base mb-2">
-                            {comparison.deviceName} Comparison
-                            </h3>
-                            <p className="text-sm">
-                            Your {comparison.deviceName} usage compared to other participants {viewType === 'day' ? 'today' : 'this week'}:
-                            </p>
-                            
                             <DeviceComparisonChart
                             deviceName={comparison.deviceName}
                             yourUsage={comparison.yourUsage}
                             averageUsage={comparison.averageUsage}
                             percentDifference={comparison.percentDifference}
                             isLowerThanAverage={comparison.isLowerThanAverage}
+                            viewType={viewType}
                             />
                         </div>
                         ))}
