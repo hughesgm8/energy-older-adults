@@ -22,6 +22,8 @@ export function Dashboard() {
     const [availableDateRange, setAvailableDateRange] = useState<{ start: Date, end: Date } | null>(null);
     const [comparisons, setComparisons] = useState<ComparisonResult[]>([]);
 
+    console.log('Full API response:', data);
+
     const aggregateDataByDay = (hourlyData: DeviceReading[]): DeviceReading[] => {
         if (!hourlyData.length) return [];
         
@@ -78,11 +80,21 @@ export function Dashboard() {
         const firstDevice = Object.values(deviceData)[0];
         if (!firstDevice?.hourly?.timestamps?.length) return null;
         
-        const timestamps = firstDevice.hourly.timestamps;
+        // Create Date objects from all timestamps
+        const timestampDates = firstDevice.hourly.timestamps.map(ts => new Date(ts));
         
+        // Sort to find actual min and max dates (regardless of order in the array)
+        const sortedDates = [...timestampDates].sort((a, b) => a.getTime() - b.getTime());
+        
+        console.log('All available timestamps:', firstDevice.hourly.timestamps);
+        console.log('Date range:', {
+            start: sortedDates[0].toISOString(),
+            end: sortedDates[sortedDates.length - 1].toISOString()
+        });
+    
         return {
-            start: new Date(timestamps[0]),
-            end: new Date(timestamps[timestamps.length - 1])
+            start: sortedDates[0],
+            end: sortedDates[sortedDates.length - 1]
         };
     };
 
@@ -152,33 +164,58 @@ export function Dashboard() {
     const handleNavigate = (direction: 'prev' | 'next') => {
         if (!availableDateRange) return;
     
-        const newDate = new Date(currentDate);
+        // Get all unique dates from all devices
+        const allDates = new Set<string>();
         
+        Object.values(deviceData).forEach(device => {
+            if (device?.hourly?.timestamps) {
+                device.hourly.timestamps.forEach(timestamp => {
+                    const date = new Date(timestamp);
+                    // Store just the date part (YYYY-MM-DD)
+                    allDates.add(date.toISOString().split('T')[0]);
+                });
+            }
+        });
+        
+        // Convert to Date objects and sort
+        const sortedUniqueDates = [...allDates]
+            .map(dateStr => new Date(dateStr))
+            .sort((a, b) => a.getTime() - b.getTime());
+        
+        console.log('All available dates for navigation:', 
+            sortedUniqueDates.map(d => d.toISOString().split('T')[0]));
+        
+        // Find current date (without time component)
+        const currentDateStr = currentDate.toISOString().split('T')[0];
+        const currentIndex = sortedUniqueDates.findIndex(
+            date => date.toISOString().split('T')[0] === currentDateStr
+        );
+        
+        // If current date not found, use closest match
+        let targetIndex = currentIndex;
+        if (targetIndex === -1) {
+            // Find closest date
+            const closestDate = sortedUniqueDates.reduce((prev, curr) => {
+                const prevDiff = Math.abs(prev.getTime() - currentDate.getTime());
+                const currDiff = Math.abs(curr.getTime() - currentDate.getTime());
+                return prevDiff < currDiff ? prev : curr;
+            });
+            
+            targetIndex = sortedUniqueDates.findIndex(
+                date => date.getTime() === closestDate.getTime()
+            );
+        }
+        
+        // Navigate based on direction
         if (direction === 'prev') {
-            if (viewType === 'week') {
-                // Move back exactly one week (7 days)
-                newDate.setDate(newDate.getDate() - 7);
-            } else {
-                // Move back one day
-                newDate.setDate(newDate.getDate() - 1);
-            }
+            targetIndex = Math.max(0, targetIndex - 1);
         } else {
-            if (viewType === 'week') {
-                // Move forward exactly one week (7 days)
-                newDate.setDate(newDate.getDate() + 7);
-            } else {
-                // Move forward one day
-                newDate.setDate(newDate.getDate() + 1);
-            }
+            targetIndex = Math.min(sortedUniqueDates.length - 1, targetIndex + 1);
         }
         
-        // Data boundary check should be separate from view display
-        if (newDate < availableDateRange.start) {
-            newDate.setTime(availableDateRange.start.getTime());
-        } else if (newDate > availableDateRange.end) {
-            newDate.setTime(availableDateRange.end.getTime());
-        }
-        
+        // Set to the target date
+        const newDate = new Date(sortedUniqueDates[targetIndex]);
+        console.log(`Navigating to: ${newDate.toISOString().split('T')[0]}`);
         setCurrentDate(newDate);
     };
 
@@ -251,6 +288,20 @@ export function Dashboard() {
     
                 const data = await response.json();
                 console.log('Parsed device data:', data);
+
+                console.log('All available dates:');
+                Object.entries(data).forEach(([deviceKey, device]) => {
+                    const deviceData = device as any;
+                    if (deviceData?.hourly?.timestamps) {
+                        const uniqueDates = new Set(
+                            deviceData.hourly.timestamps.map((timestamp: string) => 
+                                new Date(timestamp).toISOString().split('T')[0]
+                            )
+                        );
+                        console.log(`${deviceKey}: ${[...uniqueDates].join(', ')}`);
+                    }
+                });
+
                 setDeviceData(data);
                 setIsLoading(false);
             } catch (error) {
