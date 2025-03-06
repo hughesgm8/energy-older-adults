@@ -11,24 +11,28 @@ export interface ComparisonResult {
 }
 
 class ParticipantComparisonService {
+
+    private async fetchAllParticipantsData(): Promise<Record<string, DeviceDataResponse>> {
+        const participantIds = ['P0', 'P1', 'P2']; // Add more if needed
+        const allData: Record<string, DeviceDataResponse> = {};
+      
+        for (const id of participantIds) {
+          const response = await fetch(`http://localhost:5000/api/device-data/${id}`);
+          if (!response.ok) {
+            console.error(`Failed to fetch data for participant ${id}`, response.statusText);
+            continue;
+          }
+          const data: DeviceDataResponse = await response.json();
+          allData[id] = data;
+        }
+      
+        return allData;
+      }
+
+      
   private mockParticipantData: Record<string, DeviceDataResponse> = {
     // We'll populate this with mock data for testing
   };
-  
-  private async fetchAllParticipantsData(): Promise<Record<string, DeviceDataResponse>> {
-    try {
-      // In a real implementation, this would make API calls to get all participants' data
-      // For now, use mock data
-      if (Object.keys(this.mockParticipantData).length === 0) {
-        this.initializeMockData();
-      }
-      
-      return this.mockParticipantData;
-    } catch (error) {
-      console.error('Error fetching all participants data:', error);
-      return {};
-    }
-  }
   
   private initializeMockData() {
     // Create mock data for participants P0, P1, P2, P3
@@ -172,11 +176,18 @@ class ParticipantComparisonService {
     timeRange: TimeRange,
     viewType: ViewType
   ): Promise<ComparisonResult[]> {
-    // For the study prototype, we'll use the mock data
-    // Initialize mock data if it hasn't been done yet
-    if (Object.keys(this.mockParticipantData).length === 0) {
-      this.initializeMockData();
-    }
+    let allData: Record<string, DeviceDataResponse> = {};
+
+    if (process.env.USE_MOCK_DATA === 'true') {
+        if (Object.keys(this.mockParticipantData).length === 0) {
+          this.initializeMockData();
+        }
+        allData = this.mockParticipantData;
+        // Use mockParticipantData…
+      } else {
+        allData = await this.fetchAllParticipantsData();
+        // Use real data…
+      }
     
     const results: ComparisonResult[] = [];
     
@@ -203,7 +214,7 @@ class ParticipantComparisonService {
       // Get usage for other participants with the same device
       const otherParticipantsWithDevice: Array<{id: string, usage: number}> = [];
       
-      for (const [participantId, deviceData] of Object.entries(this.mockParticipantData)) {
+      for (const [participantId, deviceData] of Object.entries(allData)) {
         // Skip the current participant
         if (participantId === currentParticipantId) continue;
         
