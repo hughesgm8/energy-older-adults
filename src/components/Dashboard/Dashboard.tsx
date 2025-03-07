@@ -10,6 +10,7 @@ import { useParams } from 'react-router-dom';
 import { deviceCategorizationService } from '../../services/DashboardCategorizationService';
 import { ComparisonResult, participantComparisonService } from '@/services/ParticipantComparisonService';
 import DeviceComparisonChart from '../ComparisonChart/DeviceComparisonChart';
+import { DeviceIcon } from '../DeviceIcon/DeviceIcon';
 
 export function Dashboard() {
     const { participantId } = useParams();
@@ -705,6 +706,10 @@ export function Dashboard() {
                     <div className="space-y-6">
                         {comparisons.map((comparison) => (
                         <div key={comparison.deviceName} className="p-4 bg-blue-50 rounded-lg">
+                            <div className="mb-3 flex items-center gap-2">
+                            <DeviceIcon deviceName={comparison.deviceName} className="w-5 h-5" />
+                                <h3 className="font-medium">{comparison.deviceName}</h3>
+                            </div>
                             <DeviceComparisonChart
                             deviceName={comparison.deviceName}
                             yourUsage={comparison.yourUsage}
