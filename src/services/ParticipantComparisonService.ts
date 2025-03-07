@@ -178,7 +178,9 @@ class ParticipantComparisonService {
   ): Promise<ComparisonResult[]> {
     let allData: Record<string, DeviceDataResponse> = {};
 
-    if (process.env.USE_MOCK_DATA === 'true') {
+    console.log("USE_MOCK_DATA:", import.meta.env.VITE_USE_MOCK_DATA);
+
+    if (import.meta.env.VITE_USE_MOCK_DATA === 'true') {
         if (Object.keys(this.mockParticipantData).length === 0) {
           this.initializeMockData();
         }
