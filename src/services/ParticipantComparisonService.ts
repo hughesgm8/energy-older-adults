@@ -13,7 +13,7 @@ export interface ComparisonResult {
 class ParticipantComparisonService {
 
     private async fetchAllParticipantsData(): Promise<Record<string, DeviceDataResponse>> {
-        const participantIds = ['P0', 'P1', 'P2']; // Add more if needed
+        const participantIds = ['P0', 'P1', 'P2', 'P3']; // Add more if needed
         const allData: Record<string, DeviceDataResponse> = {};
       
         for (const id of participantIds) {
@@ -188,6 +188,7 @@ class ParticipantComparisonService {
         // Use mockParticipantData…
       } else {
         allData = await this.fetchAllParticipantsData();
+        console.log("Server data:", allData);
         // Use real data…
       }
     
@@ -201,16 +202,6 @@ class ParticipantComparisonService {
       const hourlyData = deviceInfo.hourly.data;
       for (let i = 0; i < hourlyData.length; i++) {
         yourUsage += hourlyData[i];
-      }
-      
-      // Scale down usage based on time range for more realistic numbers
-      // (mock data is for a full week)
-      if (viewType === 'day') {
-        yourUsage = yourUsage / 7; // Approximate daily average
-        
-        // Add some random variation day to day (±20%)
-        const dailyVariation = 0.8 + Math.random() * 0.4; // 0.8 to 1.2
-        yourUsage *= dailyVariation;
       }
       
       // Get usage for other participants with the same device
@@ -227,13 +218,6 @@ class ParticipantComparisonService {
           const hourlyData = deviceData2.hourly.data;
           for (let i = 0; i < hourlyData.length; i++) {
             usage += hourlyData[i];
-          }
-          
-          // Scale down for daily view
-          if (viewType === 'day') {
-            usage = usage / 7;
-            const dailyVariation = 0.8 + Math.random() * 0.4;
-            usage *= dailyVariation;
           }
           
           otherParticipantsWithDevice.push({
