@@ -5,6 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 export function ParticipantSelector() {
   const navigate = useNavigate();
   
+  // Replace this with a real data source if needed
+  const participants = ['P0', 'P1', 'P2', 'P3'];
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="w-full max-w-md mx-auto px-4 py-8">
@@ -16,13 +19,15 @@ export function ParticipantSelector() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <Button 
-                onClick={() => navigate('/participant/P0')}
-                className="w-full text-base py-6"
-              >
-                Participant P0
-              </Button>
-              {/* Add more participants here as needed */}
+              {participants.map((participant) => (
+                <Button
+                  key={participant}
+                  onClick={() => navigate(`/participant/${participant}`)}
+                  className="w-full text-base py-6"
+                >
+                  Participant {participant}
+                </Button>
+              ))}
             </div>
           </CardContent>
         </Card>
