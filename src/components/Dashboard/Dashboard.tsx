@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { Activity, Users } from 'lucide-react';
+import { Activity, Users, PoundSterlingIcon, ArrowUpIcon, ArrowDownIcon } from 'lucide-react';
 import { DeviceDataResponse, DeviceInfo, DeviceReading, DeviceInsightsParams, DeviceInsights } from '../../types/device';
 import { TimeRange, ViewType } from '../../types/views';
 import { ViewControls } from '../ViewControls/ViewControls';
@@ -11,6 +11,7 @@ import { deviceCategorizationService } from '../../services/DashboardCategorizat
 import { ComparisonResult, participantComparisonService } from '@/services/ParticipantComparisonService';
 import DeviceComparisonChart from '../ComparisonChart/DeviceComparisonChart';
 import { DeviceIcon } from '../DeviceIcon/DeviceIcon';
+import { CostEstimationService } from '../../services/CostEstimationService';
 
 export function Dashboard() {
     const { participantId } = useParams();
@@ -22,6 +23,7 @@ export function Dashboard() {
     const [currentDate, setCurrentDate] = useState<Date>(new Date());
     const [availableDateRange, setAvailableDateRange] = useState<{ start: Date, end: Date } | null>(null);
     const [comparisons, setComparisons] = useState<ComparisonResult[]>([]);
+    const [previousWeekData, setPreviousWeekData] = useState<DeviceReading[]>([]);
 
     console.log('Full API response:', data);
 
@@ -329,6 +331,7 @@ export function Dashboard() {
         });
       
         try {
+          // Process current time period data
           const updatedData: DeviceReading[] = [];
           const firstDevice = Object.values(deviceData)[0];
           
@@ -361,12 +364,56 @@ export function Dashboard() {
           if (viewType === 'week') {
             const aggregatedData = aggregateDataByDay(updatedData);
             setData(aggregatedData);
+            
+            // Process previous week data (only in week view)
+            const prevWeekStart = new Date(timeRange.start);
+            prevWeekStart.setDate(prevWeekStart.getDate() - 7);
+            
+            const prevWeekEnd = new Date(timeRange.end);
+            prevWeekEnd.setDate(prevWeekEnd.getDate() - 7);
+            
+            console.log('Previous week range:', {
+              start: prevWeekStart.toISOString(),
+              end: prevWeekEnd.toISOString()
+            });
+            
+            // Gather previous week data using same logic as current week
+            const prevWeekData: DeviceReading[] = [];
+            
+            firstDevice.hourly.timestamps.forEach((timestamp, index) => {
+              const date = new Date(timestamp);
+              
+              if (date >= prevWeekStart && 
+                  date <= prevWeekEnd && 
+                  date >= boundaries.start && 
+                  date <= boundaries.end) {
+                  
+                const reading: DeviceReading = {
+                  timestamp: date
+                };
+                
+                Object.entries(deviceData).forEach(([deviceKey, device]) => {
+                  const deviceName = device.name.toLowerCase().replace(/\s+/g, '_');
+                  reading[deviceName] = device.hourly.data[index];
+                });
+                
+                prevWeekData.push(reading);
+              }
+            });
+            
+            // Sort and aggregate previous week data
+            prevWeekData.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+            const aggregatedPrevData = aggregateDataByDay(prevWeekData);
+            setPreviousWeekData(aggregatedPrevData);
           } else {
             setData(updatedData);
+            // For day view, clear previous week data
+            setPreviousWeekData([]);
           }
         } catch (error) {
           console.error('Error processing data:', error);
         }
+        
         fetchComparisons();
       }, [deviceData, currentDate, viewType]);
 
@@ -629,16 +676,16 @@ export function Dashboard() {
                     </CardContent>
                 </Card>
 
-                {/* Daily Insights Section */}
+                {/* Cost Insights Section */}
                 <Card className="shadow">
                     <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                        <Activity className="w-5 h-5" />
-                        Usage Insights
+                        <PoundSterlingIcon className="w-5 h-5" />
+                        Cost Insights
                     </CardTitle>
                     </CardHeader>
                     <CardContent>
-                    <div className="space-y-4">
+                    <div className="space-y-4 mb-6">
                         {Object.entries(deviceData).map(([deviceKey, device]) => {
                             // Skip if no data for this time period
                             if (data.length === 0) {
@@ -660,18 +707,60 @@ export function Dashboard() {
 
                                 // Use category-based background colors
                                 const bgColor = getCategoryBgColor(device.name);
-                                
+                                const costAmount = CostEstimationService.estimateCost(insights.totalEnergy);
+                
                                 return (
                                     <div
                                         key={deviceKey}
                                         className={`p-4 ${bgColor} rounded-lg`}
                                     >
-                                        <h3 className="font-medium text-sm sm:text-base">{device.name} Usage</h3>
-                                        <div className="text-sm space-y-1 mt-1">
-                                            <p>{formatInsightText(insights.insightTemplate, insights)}</p>
-                                            <p className="text-xs text-gray-500 mt-1">
-                                                Category: {insights.deviceCategory} • 
-                                                Type: {insights.consumptionType === 'continuous' ? 'Always-on' : 'On-demand'}
+                                        <h3 className="font-medium text-sm sm:text-base">{device.name}</h3>
+                                        <div className="mt-2">
+                                            <div className="flex items-baseline">
+                                                <span className="text-xl font-medium">£{costAmount.toFixed(2)}</span>
+                                                <span className="text-sm text-gray-600 ml-1">
+                                                    {viewType === 'day' ? 'today' : 'this week'}
+                                                </span>
+                                            </div>
+                                            
+                                            {/* For week view only - show comparison with previous week */}
+                                            {viewType === 'week' && previousWeekData.length > 0 && (
+                                                (() => {
+                                                    const deviceName = device.name.toLowerCase().replace(/\s+/g, '_');
+                                                    const prevWeekDevice = previousWeekData.reduce((sum, reading) => 
+                                                        sum + (typeof reading[deviceName] === 'number' ? reading[deviceName] : 0), 0);
+                                                    
+                                                    if (prevWeekDevice > 0) {
+                                                        const savings = CostEstimationService.calculateSavings(prevWeekDevice, insights.totalEnergy);
+                                                        return (
+                                                            <div className="mt-1">
+                                                                <span className={savings.isSaving ? "text-green-600" : "text-red-600"}>
+                                                                    {savings.isSaving ? (
+                                                                        <>
+                                                                            <span className="inline-flex items-center">
+                                                                                <ArrowDownIcon className="w-3 h-3 mr-1" /> 
+                                                                                Saved £{savings.costDifference.toFixed(2)} ({savings.percentChange.toFixed(1)}%)
+                                                                            </span>
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <span className="inline-flex items-center">
+                                                                                <ArrowUpIcon className="w-3 h-3 mr-1" /> 
+                                                                                Spent £{savings.costDifference.toFixed(2)} more ({savings.percentChange.toFixed(1)}%)
+                                                                            </span>
+                                                                        </>
+                                                                    )}
+                                                                </span>
+                                                                <p className="text-xs text-gray-500 mt-1">Compared to last week</p>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()
+                                            )}
+
+                                            <p className="text-xs text-gray-500 mt-2">
+                                                Category: {insights.deviceCategory}
                                             </p>
                                         </div>
                                     </div>
@@ -680,11 +769,16 @@ export function Dashboard() {
                                 return (
                                     <div key={deviceKey} className={`p-4 bg-gray-50 rounded-lg`}>
                                         <h3 className="font-medium text-sm sm:text-base">{device.name}</h3>
-                                        <p className="text-sm">Unable to calculate insights for this period</p>
+                                        <p className="text-sm">Unable to calculate cost for this period</p>
                                     </div>
                                 );
                             }
                         })}
+                    </div>
+                    <div className="border-t pt-6 pb-2 mt-6">
+                        <p className="text-sm text-muted-foreground max-w-prose mx-auto sm:mx-0">
+                        These are estimates of the maximum amount you'd pay based on the standard UK electricity price cap. Source: Ofgem
+                        </p>
                     </div>
                     </CardContent>
                 </Card>
