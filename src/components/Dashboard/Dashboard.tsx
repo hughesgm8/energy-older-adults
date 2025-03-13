@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ComposedChart, Bar } from 'recharts';
 import { Activity, Users, PoundSterlingIcon, ArrowUpIcon, ArrowDownIcon } from 'lucide-react';
 import { DeviceDataResponse, DeviceInfo, DeviceReading, DeviceInsightsParams, DeviceInsights } from '../../types/device';
 import { TimeRange, ViewType } from '../../types/views';
@@ -581,10 +581,12 @@ export function Dashboard() {
                         <div className="flex justify-center items-center h-60 sm:h-80">
                             <p>No data available for this time period</p>
                         </div>
-                    ) : (
+                        ) : (
                         <div className="h-60 sm:h-80">
                             <ResponsiveContainer width="100%" height="100%">
-                            <LineChart
+                            {viewType === 'day' ? (
+                                // Keep the original LineChart for day view
+                                <LineChart
                                 data={data}
                                 margin={{ 
                                     top: 15, 
@@ -592,58 +594,50 @@ export function Dashboard() {
                                     left: 0, 
                                     bottom: 20 
                                 }}
-                            >
+                                >
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis
                                     dataKey="timestamp"
                                     tickFormatter={(value) => {
-                                        const date = new Date(value);
-                                        if (viewType === 'week') {
-                                        // For week view, show weekday + day number, without repeating
-                                        return date.toLocaleDateString('en-AU', {
-                                            weekday: 'short',
-                                            day: 'numeric'
-                                        });
-                                        }
-                                        // For day view, show hour
-                                        return `${date.getHours().toString().padStart(2, '0')}:00`;
+                                    const date = new Date(value);
+                                    return `${date.getHours().toString().padStart(2, '0')}:00`;
                                     }}
                                     label={{ 
-                                        value: viewType === 'week' ? 'Date' : 'Time of Day', 
-                                        position: 'insideBottom',
-                                        offset: -10,
-                                        style: { fontSize: '0.75rem' }
+                                    value: 'Time of Day', 
+                                    position: 'insideBottom',
+                                    offset: -10,
+                                    style: { fontSize: '0.75rem' }
                                     }}
                                     tick={{ fontSize: 10 }}
                                     height={35}
                                 />
                                 <YAxis 
                                     label={{ 
-                                        value: 'Energy (kW)', 
-                                        angle: -90, 
-                                        position: 'insideLeft',
-                                        offset: -5,
-                                        style: { fontSize: '0.75rem' }
+                                    value: 'Energy (kW)', 
+                                    angle: -90, 
+                                    position: 'insideLeft',
+                                    offset: -5,
+                                    style: { fontSize: '0.75rem' }
                                     }}
                                     tick={{ fontSize: 10 }}
                                     width={40}
                                 />
                                 <Tooltip
                                     formatter={(value: number, name: string) => {
-                                        const deviceInfo = Object.values(deviceData).find(
-                                            device => device.name.toLowerCase().replace(/\s+/g, '_') === name
-                                        );
-                                        return [`${value.toFixed(3)} kW`, deviceInfo?.name || name];
+                                    const deviceInfo = Object.values(deviceData).find(
+                                        device => device.name.toLowerCase().replace(/\s+/g, '_') === name
+                                    );
+                                    return [`${value.toFixed(3)} kW`, deviceInfo?.name || name];
                                     }}
                                     labelFormatter={(label) => {
-                                        const date = new Date(label);
-                                        return date.toLocaleDateString('en-AU', {
-                                            weekday: 'long',
-                                            day: '2-digit',
-                                            month: 'short',
-                                            hour: '2-digit',
-                                            minute: '2-digit'
-                                        });
+                                    const date = new Date(label);
+                                    return date.toLocaleDateString('en-AU', {
+                                        weekday: 'long',
+                                        day: '2-digit',
+                                        month: 'short',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                    });
                                     }}
                                     contentStyle={{ fontSize: '0.875rem' }}
                                 />
@@ -654,25 +648,128 @@ export function Dashboard() {
                                 />
                                 {Object.entries(deviceData).map(([deviceKey, device]) => {
                                     const deviceName = device.name.toLowerCase().replace(/\s+/g, '_');
-                                    // Use category-based colors
                                     const color = getCategoryColor(device.name);
                                     
                                     return (
-                                        <Line
-                                            key={deviceKey}
-                                            type="monotone"
-                                            dataKey={deviceName}
-                                            stroke={color}
-                                            name={device.name}
-                                            strokeWidth={2}
-                                            dot={viewType === 'week'} // Show dots only for week view
-                                        />
+                                    <Line
+                                        key={deviceKey}
+                                        type="monotone"
+                                        dataKey={deviceName}
+                                        stroke={color}
+                                        name={device.name}
+                                        strokeWidth={2}
+                                        dot={false}
+                                    />
                                     );
                                 })}
-                            </LineChart>
+                                </LineChart>
+                            ) : (
+                                // For week view, use a ComposedChart with grouped bars and total line
+                                <ComposedChart
+                                data={data}
+                                margin={{ 
+                                    top: 15, 
+                                    right: 10, 
+                                    left: 0, 
+                                    bottom: 20 
+                                }}
+                                >
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis
+                                    dataKey="timestamp"
+                                    tickFormatter={(value) => {
+                                    const date = new Date(value);
+                                    return date.toLocaleDateString('en-AU', {
+                                        weekday: 'short',
+                                        day: 'numeric'
+                                    });
+                                    }}
+                                    label={{ 
+                                    value: 'Date', 
+                                    position: 'insideBottom',
+                                    offset: -10,
+                                    style: { fontSize: '0.75rem' }
+                                    }}
+                                    tick={{ fontSize: 10 }}
+                                    height={35}
+                                />
+                                <YAxis 
+                                    label={{ 
+                                    value: 'Energy (kW)', 
+                                    angle: -90, 
+                                    position: 'insideLeft',
+                                    offset: -5,
+                                    style: { fontSize: '0.75rem' }
+                                    }}
+                                    tick={{ fontSize: 10 }}
+                                    width={40}
+                                />
+                                <Tooltip
+                                    formatter={(value: number, name: string) => {
+                                    if (name === "total") {
+                                        return [`${value.toFixed(3)} kW`, "Total Energy"];
+                                    }
+                                    const deviceInfo = Object.values(deviceData).find(
+                                        device => device.name.toLowerCase().replace(/\s+/g, '_') === name
+                                    );
+                                    return [`${value.toFixed(3)} kW`, deviceInfo?.name || name];
+                                    }}
+                                    labelFormatter={(label) => {
+                                    const date = new Date(label);
+                                    return date.toLocaleDateString('en-AU', {
+                                        weekday: 'long',
+                                        day: '2-digit',
+                                        month: 'short'
+                                    });
+                                    }}
+                                    contentStyle={{ fontSize: '0.875rem' }}
+                                />
+                                <Legend 
+                                    verticalAlign="top" 
+                                    height={30}
+                                    wrapperStyle={{ fontSize: '0.75rem' }}
+                                />
+                                {/* Add bars for each device */}
+                                {Object.entries(deviceData).map(([deviceKey, device], index) => {
+                                    const deviceName = device.name.toLowerCase().replace(/\s+/g, '_');
+                                    const color = getCategoryColor(device.name);
+                                    
+                                    return (
+                                    <Bar
+                                        key={deviceKey}
+                                        dataKey={deviceName}
+                                        name={device.name}
+                                        fill={color}
+                                        barSize={10}
+                                    />
+                                    );
+                                })}
+                                
+                                {/* Add line for total energy consumption */}
+                                <Line
+                                    type="linear"
+                                    dataKey={(data) => {
+                                    // Calculate total for each day from all devices
+                                    let total = 0;
+                                    Object.values(deviceData).forEach(device => {
+                                        const deviceName = device.name.toLowerCase().replace(/\s+/g, '_');
+                                        if (typeof data[deviceName] === 'number') {
+                                        total += data[deviceName];
+                                        }
+                                    });
+                                    return total;
+                                    }}
+                                    name="total"
+                                    stroke="#696969"
+                                    strokeWidth={1.5}
+                                    dot={{ fill: '#696969', r: 3 }}
+                                    connectNulls={false}
+                                />
+                                </ComposedChart>
+                            )}
                             </ResponsiveContainer>
                         </div>
-                    )}
+                        )}
                     </CardContent>
                 </Card>
 
