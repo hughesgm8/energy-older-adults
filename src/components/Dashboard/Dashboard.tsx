@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ComposedChart, Bar } from 'recharts';
+import { BarChart, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ComposedChart, Bar } from 'recharts';
 import { Activity, Users, PoundSterlingIcon, ArrowUpIcon, ArrowDownIcon } from 'lucide-react';
 import { DeviceDataResponse, DeviceInfo, DeviceReading, DeviceInsightsParams, DeviceInsights } from '../../types/device';
 import { TimeRange, ViewType } from '../../types/views';
@@ -24,6 +24,7 @@ export function Dashboard() {
     const [availableDateRange, setAvailableDateRange] = useState<{ start: Date, end: Date } | null>(null);
     const [comparisons, setComparisons] = useState<ComparisonResult[]>([]);
     const [previousWeekData, setPreviousWeekData] = useState<DeviceReading[]>([]);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
     console.log('Full API response:', data);
 
@@ -664,6 +665,68 @@ export function Dashboard() {
                                 })}
                                 </LineChart>
                             ) : (
+                                // For week view, check if mobile
+                                isMobile ? (
+                                    // For mobile week view - consider a simpler visualization
+                                    <BarChart
+                                    data={data}
+                                    margin={{ top: 15, right: 10, left: 0, bottom: 20 }}
+                                    barGap={4}
+                                    >
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis
+                                        dataKey="timestamp"
+                                        tickFormatter={(value) => {
+                                        const date = new Date(value);
+                                        // Very short labels on small screens
+                                        return date.toLocaleDateString('en-AU', {
+                                            weekday: 'narrow',
+                                        });
+                                        }}
+                                        tick={{ fontSize: 12 }}
+                                        height={35}
+                                    />
+                                    <YAxis 
+                                        tick={{ fontSize: 12 }}
+                                        width={40}
+                                    />
+                                    <Tooltip
+                                        formatter={(value: number, name: string) => {
+                                        if (name === "total") {
+                                            return [`${value.toFixed(3)} kW`, "Total Energy"];
+                                        }
+                                        const deviceInfo = Object.values(deviceData).find(
+                                            device => device.name.toLowerCase().replace(/\s+/g, '_') === name
+                                        );
+                                        return [`${value.toFixed(3)} kW`, deviceInfo?.name || name];
+                                        }}
+                                        labelFormatter={(label) => {
+                                        const date = new Date(label);
+                                        return date.toLocaleDateString('en-AU', {
+                                            weekday: 'long',
+                                            day: '2-digit',
+                                            month: 'short'
+                                        });
+                                        }}
+                                    />
+                                    <Legend layout="vertical" align="center" />
+                                    {/* Show stacked bars for total with color-coded segments */}
+                                    {Object.entries(deviceData).map(([deviceKey, device]) => {
+                                        const deviceName = device.name.toLowerCase().replace(/\s+/g, '_');
+                                        const color = getCategoryColor(device.name);
+                                        
+                                        return (
+                                        <Bar
+                                            key={deviceKey}
+                                            dataKey={deviceName}
+                                            name={device.name}
+                                            stackId="a"
+                                            fill={color}
+                                        />
+                                        );
+                                    })}
+                                    </BarChart>
+                                ) : (
                                 // For week view, use a ComposedChart with grouped bars and total line
                                 <ComposedChart
                                 data={data}
@@ -740,7 +803,8 @@ export function Dashboard() {
                                         dataKey={deviceName}
                                         name={device.name}
                                         fill={color}
-                                        barSize={10}
+                                        // Larger bars on mobile for easier tapping
+                                        barSize={window.innerWidth < 768 ? 30 : 20}
                                     />
                                     );
                                 })}
@@ -766,10 +830,110 @@ export function Dashboard() {
                                     connectNulls={false}
                                 />
                                 </ComposedChart>
+                            )
                             )}
                             </ResponsiveContainer>
                         </div>
                         )}
+                        {isMobile && viewType === 'week' && (
+                            <details className="mt-4">
+                                <summary className="cursor-pointer text-sm font-medium text-blue-600 mb-2 p-2 bg-blue-50 rounded flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
+                                    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                                </svg>
+                                Show data in table format
+                                </summary>
+                                <div className="overflow-x-auto mt-3 border border-gray-200 rounded-lg">
+                                <table className="w-full text-sm border-collapse">
+                                    <thead>
+                                    <tr className="bg-gray-50">
+                                        <th className="text-left p-3 border border-gray-300 font-medium">Day</th>
+                                        {Object.values(deviceData).map(device => (
+                                        <th key={device.name} className="text-left p-3 border border-gray-300 font-medium" style={{ color: getCategoryColor(device.name) }}>
+                                            {device.name}
+                                        </th>
+                                        ))}
+                                        <th className="text-left p-3 border border-gray-300 font-medium bg-gray-100">Total</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    {data.map((reading, index) => (
+                                        <tr key={reading.timestamp.toString()} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                        <td className="p-3 border border-gray-300 font-medium">
+                                            {new Date(reading.timestamp).toLocaleDateString('en-AU', {
+                                            weekday: 'short',
+                                            day: 'numeric'
+                                            })}
+                                        </td>
+                                        {Object.values(deviceData).map(device => {
+                                            const deviceName = device.name.toLowerCase().replace(/\s+/g, '_');
+                                            const color = getCategoryColor(device.name);
+                                            return (
+                                            <td key={device.name} className="p-3 border border-gray-300" style={{ borderLeftColor: color, borderLeftWidth: '2px' }}>
+                                                {typeof reading[deviceName] === 'number' 
+                                                ? `${reading[deviceName].toFixed(2)} kW` 
+                                                : '-'}
+                                            </td>
+                                            );
+                                        })}
+                                        <td className="p-3 border border-gray-300 font-medium bg-gray-50">
+                                            {(() => {
+                                            let total = 0;
+                                            Object.values(deviceData).forEach(device => {
+                                                const deviceName = device.name.toLowerCase().replace(/\s+/g, '_');
+                                                if (typeof reading[deviceName] === 'number') {
+                                                total += reading[deviceName];
+                                                }
+                                            });
+                                            return `${total.toFixed(2)} kW`;
+                                            })()}
+                                        </td>
+                                        </tr>
+                                    ))}
+                                    </tbody>
+                                    <tfoot>
+                                    <tr className="bg-gray-100">
+                                        <td className="p-3 border border-gray-300 font-medium">Weekly Avg</td>
+                                        {Object.values(deviceData).map(device => {
+                                        const deviceName = device.name.toLowerCase().replace(/\s+/g, '_');
+                                        // Calculate average for this device
+                                        const avg = data.reduce((sum, reading) => {
+                                            return sum + (typeof reading[deviceName] === 'number' ? reading[deviceName] : 0);
+                                        }, 0) / (data.length || 1);
+                                        
+                                        return (
+                                            <td key={device.name} className="p-3 border border-gray-300 font-medium">
+                                            {avg.toFixed(2)} kW
+                                            </td>
+                                        );
+                                        })}
+                                        <td className="p-3 border border-gray-300 font-medium">
+                                        {(() => {
+                                            // Calculate total average across all days
+                                            let totalSum = 0;
+                                            data.forEach(reading => {
+                                            let dayTotal = 0;
+                                            Object.values(deviceData).forEach(device => {
+                                                const deviceName = device.name.toLowerCase().replace(/\s+/g, '_');
+                                                if (typeof reading[deviceName] === 'number') {
+                                                dayTotal += reading[deviceName];
+                                                }
+                                            });
+                                            totalSum += dayTotal;
+                                            });
+                                            const avg = totalSum / (data.length || 1);
+                                            return `${avg.toFixed(2)} kW`;
+                                        })()}
+                                        </td>
+                                    </tr>
+                                    </tfoot>
+                                </table>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-2 italic">
+                                This table shows your daily energy consumption in kilowatts (kW) for each device.
+                                </p>
+                            </details>
+                            )}
                     </CardContent>
                 </Card>
 
