@@ -105,14 +105,23 @@ export function Dashboard() {
     const fetchComparisons = async () => {
         if (!participantId || !availableDateRange) return;
         
+        // Define timeRange inside the function to ensure it's using current values
+        const comparisonTimeRange = getTimeRange(currentDate, viewType);
+        
         try {
+            console.log('Fetching comparison data with:', {
+            participantId,
+            timeRange: comparisonTimeRange,
+            viewType
+            });
           const results = await participantComparisonService.getComparisons(
             participantId,
             deviceData,
-            timeRange,
+            comparisonTimeRange,
             viewType
           );
           
+          console.log('Comparison results:', results);
           setComparisons(results);
         } catch (error) {
           console.error('Error fetching comparisons:', error);

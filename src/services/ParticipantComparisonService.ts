@@ -17,7 +17,7 @@ class ParticipantComparisonService {
         const allData: Record<string, DeviceDataResponse> = {};
       
         for (const id of participantIds) {
-          const response = await fetch(`http://localhost:5000/api/device-data/${id}`);
+          const response = await fetch(`/api/device-data/${id}`);
           if (!response.ok) {
             console.error(`Failed to fetch data for participant ${id}`, response.statusText);
             continue;
@@ -176,6 +176,13 @@ class ParticipantComparisonService {
     timeRange: TimeRange,
     viewType: ViewType
   ): Promise<ComparisonResult[]> {
+
+    console.log('ParticipantComparisonService.getComparisons called with:', {
+        currentParticipantId,
+        timeRange,
+        viewType
+      });
+
     let allData: Record<string, DeviceDataResponse> = {};
 
     console.log("USE_MOCK_DATA:", import.meta.env.VITE_USE_MOCK_DATA);
@@ -249,7 +256,7 @@ class ParticipantComparisonService {
         });
       }
     }
-    
+
     return results;
   }
 }
