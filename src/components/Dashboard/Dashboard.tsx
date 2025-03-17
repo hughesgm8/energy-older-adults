@@ -497,6 +497,32 @@ export function Dashboard() {
         return colorMap[category] || '#6b7280'; // gray as default
     };
 
+    const getUniqueDeviceColor = (deviceKey: string, index: number) => {
+        // A selection of distinct colors that are visually distinguishable
+        const colorPalette = [
+            '#2563eb', // blue
+            '#dc2626', // red
+            '#10b981', // emerald
+            '#8b5cf6', // purple
+            '#f59e0b', // amber
+            '#ec4899', // pink
+            '#14b8a6', // teal
+            '#f97316', // orange
+            '#6366f1', // indigo
+            '#84cc16', // lime
+            '#7c3aed', // violet
+            '#06b6d4', // cyan
+            '#eab308', // yellow
+            '#ef4444', // bright red
+            '#3b82f6', // bright blue
+        ];
+        
+        // Use device key to consistently get the same color for a device
+        // Or fallback to index if we have many devices
+        const deviceIndex = deviceKey.charCodeAt(0) % colorPalette.length;
+        return colorPalette[index % colorPalette.length];
+    };
+
     // Get background color for insight cards based on device category
     const getCategoryBgColor = (deviceName: string) => {
         const category = deviceCategorizationService.getDeviceCategory2(deviceName);
@@ -647,9 +673,9 @@ export function Dashboard() {
                                     height={30}
                                     wrapperStyle={{ fontSize: '0.75rem' }}
                                 />
-                                {Object.entries(deviceData).map(([deviceKey, device]) => {
+                                {Object.entries(deviceData).map(([deviceKey, device], index) => {
                                     const deviceName = device.name.toLowerCase().replace(/\s+/g, '_');
-                                    const color = getCategoryColor(device.name);
+                                    const color = getUniqueDeviceColor(deviceKey, index);
                                     
                                     return (
                                     <Line
@@ -711,9 +737,9 @@ export function Dashboard() {
                                     />
                                     <Legend layout="vertical" align="center" />
                                     {/* Show stacked bars for total with color-coded segments */}
-                                    {Object.entries(deviceData).map(([deviceKey, device]) => {
+                                    {Object.entries(deviceData).map(([deviceKey, device], index) => {
                                         const deviceName = device.name.toLowerCase().replace(/\s+/g, '_');
-                                        const color = getCategoryColor(device.name);
+                                        const color = getUniqueDeviceColor(deviceKey, index);
                                         
                                         return (
                                         <Bar
@@ -795,7 +821,7 @@ export function Dashboard() {
                                 {/* Add bars for each device */}
                                 {Object.entries(deviceData).map(([deviceKey, device], index) => {
                                     const deviceName = device.name.toLowerCase().replace(/\s+/g, '_');
-                                    const color = getCategoryColor(device.name);
+                                    const color = getUniqueDeviceColor(deviceKey, index);
                                     
                                     return (
                                     <Bar
@@ -848,8 +874,9 @@ export function Dashboard() {
                                     <thead>
                                     <tr className="bg-gray-50">
                                         <th className="text-left p-3 border border-gray-300 font-medium">Day</th>
-                                        {Object.values(deviceData).map(device => (
-                                        <th key={device.name} className="text-left p-3 border border-gray-300 font-medium" style={{ color: getCategoryColor(device.name) }}>
+                                        {Object.values(deviceData).map((device, index) => (
+                                        <th key={device.name} className="text-left p-3 border border-gray-300 font-medium" 
+                                            style={{ color: getUniqueDeviceColor(device.name, index) }}>
                                             {device.name}
                                         </th>
                                         ))}
@@ -865,9 +892,9 @@ export function Dashboard() {
                                             day: 'numeric'
                                             })}
                                         </td>
-                                        {Object.values(deviceData).map(device => {
+                                        {Object.values(deviceData).map((device, index) => {
                                             const deviceName = device.name.toLowerCase().replace(/\s+/g, '_');
-                                            const color = getCategoryColor(device.name);
+                                            const color = getUniqueDeviceColor(device.name, index);
                                             return (
                                             <td key={device.name} className="p-3 border border-gray-300" style={{ borderLeftColor: color, borderLeftWidth: '2px' }}>
                                                 {typeof reading[deviceName] === 'number' 
