@@ -49,3 +49,8 @@ export interface CategoryReading {
     value: number;
     deviceCount: number;
   }
+
+export interface TimeRange {
+    start: Date;
+    end: Date;
+}
