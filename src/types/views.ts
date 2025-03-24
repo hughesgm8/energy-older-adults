@@ -6,8 +6,10 @@ export interface TimeRange {
 }
 
 export interface ViewControlsProps {
-  viewType: ViewType;
-  onViewTypeChange: (type: ViewType) => void;
-  onNavigate: (direction: 'prev' | 'next') => void;
-  currentDate: Date;
-}
+    viewType: ViewType;
+    onViewTypeChange: (viewType: ViewType) => void;
+    onNavigate: (direction: 'prev' | 'next') => void;
+    currentDate: Date;
+    viewLevel: 'category' | 'device';
+    onViewLevelChange: (viewLevel: 'category' | 'device') => void;
+  }

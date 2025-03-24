@@ -43,3 +43,9 @@ export interface DeviceInsights {
     consumptionType: string;
     insightTemplate: string;
 }
+
+export interface CategoryReading {
+    category: string;
+    value: number;
+    deviceCount: number;
+  }

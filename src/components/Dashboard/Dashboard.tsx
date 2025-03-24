@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { BarChart, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ComposedChart, Bar } from 'recharts';
+import { BarChart, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ComposedChart, Bar, Cell } from 'recharts';
 import { Activity, Users, PoundSterlingIcon, ArrowUpIcon, ArrowDownIcon } from 'lucide-react';
-import { DeviceDataResponse, DeviceInfo, DeviceReading, DeviceInsightsParams, DeviceInsights } from '../../types/device';
+import { DeviceDataResponse, DeviceInfo, DeviceReading, DeviceInsightsParams, DeviceInsights, CategoryReading } from '../../types/device';
 import { TimeRange, ViewType } from '../../types/views';
 import { ViewControls } from '../ViewControls/ViewControls';
 import { useParams } from 'react-router-dom';
@@ -25,8 +25,8 @@ export function Dashboard() {
     const [comparisons, setComparisons] = useState<ComparisonResult[]>([]);
     const [previousWeekData, setPreviousWeekData] = useState<DeviceReading[]>([]);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-
-    console.log('Full API response:', data);
+    const [viewLevel, setViewLevel] = useState<'category' | 'device'>('category');
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
     const aggregateDataByDay = (hourlyData: DeviceReading[]): DeviceReading[] => {
         if (!hourlyData.length) return [];
@@ -77,6 +77,35 @@ export function Dashboard() {
         );
       };
 
+    const aggregateDataByCategory = (deviceReadings: DeviceReading[]): CategoryReading[] => {
+        const categoryData: {[category: string]: {total: number, devices: string[]}} = {};
+        
+        deviceReadings.forEach(reading => {
+            Object.entries(deviceData).forEach(([deviceKey, device]) => {
+            const deviceName = device.name.toLowerCase().replace(/\s+/g, '_');
+            const category = deviceCategorizationService.getDeviceCategory2(device.name);
+            
+            if (!categoryData[category]) {
+                categoryData[category] = { total: 0, devices: [] };
+            }
+            
+            if (typeof reading[deviceName] === 'number') {
+                categoryData[category].total += reading[deviceName];
+                if (!categoryData[category].devices.includes(device.name)) {
+                categoryData[category].devices.push(device.name);
+                }
+            }
+            });
+        });
+        
+        // Transform to array format for charts
+        return Object.entries(categoryData).map(([category, data]) => ({
+            category,
+            value: data.total,
+            deviceCount: data.devices.length
+        }));
+    };
+    
     // Get the boundaries of data available from all devices
     const getDataBoundaries = (deviceData: DeviceDataResponse) => {
         if (!deviceData || Object.keys(deviceData).length === 0) return null;
@@ -172,6 +201,16 @@ export function Dashboard() {
             
             return { start, end };
         }
+    };
+
+    const handleCategoryClick = (category: string) => {
+        setSelectedCategory(category);
+        setViewLevel('device');
+    };
+      
+    const handleBackToCategories = () => {
+        setSelectedCategory(null);
+        setViewLevel('category');
     };
 
     const handleNavigate = (direction: 'prev' | 'next') => {
@@ -551,17 +590,39 @@ export function Dashboard() {
     return (
         <div className="min-h-screen bg-background">
             <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-                <h1 className="text-xl sm:text-2xl font-bold mb-6 text-center sm:text-left">
-                    Your Energy Usage ({participantId})
-                </h1>
-                
+                {/* View Level Toggle */}
+                <div className="flex justify-between items-center mb-4">
+                    <h1 className="text-xl sm:text-2xl font-bold text-center sm:text-left">
+                        Your Energy Usage ({participantId})
+                    </h1>
+                </div>
+                {viewLevel === 'category' && selectedCategory && (
+                    <div className="flex items-center mb-4 border-b pb-2">
+                        <Button 
+                            variant="ghost" 
+                            onClick={handleBackToCategories}
+                            className="flex items-center gap-1 text-sm"
+                            size="sm"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="15 18 9 12 15 6"></polyline>
+                            </svg>
+                            All Categories
+                        </Button>
+                        <span className="mx-2">›</span>
+                        <span className="font-medium">{selectedCategory}</span>
+                    </div>
+                )}
+
                 {/* View Controls */}
                 <ViewControls
                     viewType={viewType}
                     onViewTypeChange={setViewType}
                     onNavigate={handleNavigate}
                     currentDate={currentDate}
-                />
+                    viewLevel={viewLevel}
+                    onViewLevelChange={setViewLevel} 
+                    />
 
                 {/* Date Range Info - To help users understand what data is being shown */}
                 <div className="text-sm text-gray-600 mb-4 text-center sm:text-left">
@@ -569,46 +630,111 @@ export function Dashboard() {
                     {data.length === 0 && " (No data available for this period)"}
                 </div>
 
-                {/* Dynamic Device Summary Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {Object.entries(deviceData).map(([deviceKey, device]) => (
-                        <Card key={deviceKey} className="shadow-sm">
-                            <CardHeader className="pb-2">
-                                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                                    <Activity className="w-5 h-5" />
-                                    {device.name}
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                            <div className="space-y-1">
-                                <p className="text-sm text-muted-foreground">
-                                    {deviceCategorizationService.getDeviceCategory2(device.name)}
-                                </p>
-                                <p className="text-lg font-medium">
-                                {(() => {
-                                    if (!data || data.length === 0) {
-                                        return 'No active data for this period';
-                                    }
-                                    
-                                    try {
-                                        const insights = getDeviceInsights({
-                                            deviceData: data,
-                                            deviceKey,
-                                            deviceInfo: device,
-                                            viewType
-                                        });
-                                        
-                                        return `${insights.activeHours} hours of use`;
-                                    } catch (error) {
-                                        return 'Data unavailable';
-                                    }
-                                })()}
-                                </p>
-                            </div>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
+                {/* Dynamic Content - Either Categories or Devices */}
+                {viewLevel === 'category' ? (
+                    // Category View
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {/* Get unique categories and aggregate by category */}
+                        {(() => {
+                            // Get all unique categories
+                            const categories = [...new Set(Object.values(deviceData).map(device => 
+                                deviceCategorizationService.getDeviceCategory2(device.name)
+                            ))];
+                            
+                            // For each category, calculate total usage and device count
+                            return categories.map(category => {
+                                // Get all devices in this category
+                                const devicesInCategory = Object.entries(deviceData).filter(([_, device]) => 
+                                    deviceCategorizationService.getDeviceCategory2(device.name) === category
+                                );
+                                
+                                // Calculate usage for this category
+                                const totalEnergyForCategory = data.reduce((total, reading) => {
+                                    let categoryTotal = 0;
+                                    devicesInCategory.forEach(([_, device]) => {
+                                        const deviceName = device.name.toLowerCase().replace(/\s+/g, '_');
+                                        if (typeof reading[deviceName] === 'number') {
+                                            categoryTotal += reading[deviceName];
+                                        }
+                                    });
+                                    return total + categoryTotal;
+                                }, 0);
+                                
+                                return (
+                                    <Card 
+                                        key={category} 
+                                        className="shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                                        onClick={() => handleCategoryClick(category)}
+                                    >
+                                        <CardHeader className="pb-2">
+                                            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                                                <Activity className="w-5 h-5" style={{ color: getCategoryColor(category) }} />
+                                                {category}
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <div className="space-y-1">
+                                                <p className="text-sm text-muted-foreground">
+                                                    {devicesInCategory.length} {devicesInCategory.length === 1 ? 'device' : 'devices'}
+                                                </p>
+                                                <p className="text-lg font-medium">
+                                                    {totalEnergyForCategory.toFixed(2)} kW {viewType === 'day' ? 'today' : 'this week'}
+                                                </p>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                );
+                            });
+                        })()}
+                    </div>
+                ) : (
+                    // Device View (filtered by selected category if one is selected)
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {Object.entries(deviceData)
+                            .filter(([_, device]) => 
+                                // Only show devices in the selected category, or all if no category selected
+                                !selectedCategory || deviceCategorizationService.getDeviceCategory2(device.name) === selectedCategory
+                            )
+                            .map(([deviceKey, device]) => (
+                                <Card key={deviceKey} className="shadow-sm">
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                                            <Activity className="w-5 h-5" />
+                                            {device.name}
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                    <div className="space-y-1">
+                                        <p className="text-sm text-muted-foreground">
+                                            {deviceCategorizationService.getDeviceCategory2(device.name)}
+                                        </p>
+                                        <p className="text-lg font-medium">
+                                        {(() => {
+                                            if (!data || data.length === 0) {
+                                                return 'No active data for this period';
+                                            }
+                                            
+                                            try {
+                                                const insights = getDeviceInsights({
+                                                    deviceData: data,
+                                                    deviceKey,
+                                                    deviceInfo: device,
+                                                    viewType
+                                                });
+                                                
+                                                return `${insights.activeHours} hours of use`;
+                                            } catch (error) {
+                                                return 'Data unavailable';
+                                            }
+                                        })()}
+                                        </p>
+                                    </div>
+                                    </CardContent>
+                                </Card>
+                            ))
+                        }
+                    </div>
+                )}
 
                 {/* Chart Card */}
                 <Card className="shadow">
@@ -617,7 +743,107 @@ export function Dashboard() {
                         <div className="flex justify-center items-center h-60 sm:h-80">
                             <p>No data available for this time period</p>
                         </div>
-                        ) : (
+                        ) : viewLevel === 'category' ? (
+                                // Category View - Simplified chart showing only categories
+                                <div className="h-60 sm:h-80">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart
+                                        data={(() => {
+                                            // Transform data to category format
+                                            const categories = [...new Set(Object.values(deviceData).map(device => 
+                                                deviceCategorizationService.getDeviceCategory2(device.name)
+                                            ))];
+                                            
+                                            return categories.map(category => {
+                                                // Get all devices in this category
+                                                const devicesInCategory = Object.entries(deviceData).filter(([_, device]) => 
+                                                    deviceCategorizationService.getDeviceCategory2(device.name) === category
+                                                );
+                                                
+                                                // Calculate total for each day
+                                                const categoryTotal = data.reduce((total, reading) => {
+                                                    let dayTotal = 0;
+                                                    devicesInCategory.forEach(([_, device]) => {
+                                                        const deviceName = device.name.toLowerCase().replace(/\s+/g, '_');
+                                                        if (typeof reading[deviceName] === 'number') {
+                                                            dayTotal += reading[deviceName];
+                                                        }
+                                                    });
+                                                    return total + dayTotal;
+                                                }, 0);
+                                                
+                                                return {
+                                                    category,
+                                                    value: categoryTotal,
+                                                    deviceCount: devicesInCategory.length,
+                                                    // For onClick handling
+                                                    onClick: () => handleCategoryClick(category)
+                                                };
+                                            });
+                                        })()}
+                                        margin={{ top: 15, right: 10, left: 15, bottom: 20 }}
+                                        layout={(() => {
+                                            const categories = [...new Set(Object.values(deviceData).map(device => 
+                                                deviceCategorizationService.getDeviceCategory2(device.name)
+                                            ))];
+                                            return categories.length <= 3 ? "horizontal" : undefined;
+                                        })()}
+                                        // Use category count for gap decisions
+                                        barCategoryGap={(() => {
+                                            const categories = [...new Set(Object.values(deviceData).map(device => 
+                                                deviceCategorizationService.getDeviceCategory2(device.name)
+                                            ))];
+                                            return categories.length <= 3 ? "20%" : "10%";
+                                        })()}
+                                    >
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis 
+                                            dataKey="category"
+                                            tick={{ fontSize: 10 }}
+                                            height={60}
+                                        />
+                                        <YAxis
+                                            label={{ 
+                                                value: 'Energy (kW)', 
+                                                angle: -90, 
+                                                position: 'insideLeft',
+                                                offset: -5,
+                                                style: { fontSize: '0.75rem' }
+                                            }}
+                                            tick={{ fontSize: 10 }}
+                                            width={45}
+                                        />
+                                        <Tooltip
+                                            formatter={(value: number, name: string) => {
+                                                if (name === "value") return [`${value.toFixed(3)} kW`, "Energy Usage"];
+                                                return [value, name];
+                                            }}
+                                            contentStyle={{ fontSize: '0.875rem' }}
+                                        />
+                                        <Legend wrapperStyle={{ fontSize: '0.75rem' }} />
+                                        <Bar 
+                                            dataKey="value" 
+                                            name="Energy Usage" 
+                                            fill="#8884d8"
+                                            onClick={(data) => data.onClick()}
+                                            cursor="pointer"
+                                            // Set a maximum width for the bars
+                                            barSize={60}
+                                        >
+                                            {(() => {
+                                                const categories = [...new Set(Object.values(deviceData).map(device => 
+                                                    deviceCategorizationService.getDeviceCategory2(device.name)
+                                                ))];
+                                                
+                                                return categories.map((category, index) => (
+                                                    <Cell key={`cell-${index}`} fill={getCategoryColor(category)} />
+                                                ));
+                                            })()}
+                                        </Bar>
+                                    </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            ) : (
                         <div className="h-60 sm:h-80">
                             <ResponsiveContainer width="100%" height="100%">
                             {viewType === 'day' ? (
@@ -627,7 +853,7 @@ export function Dashboard() {
                                 margin={{ 
                                     top: 15, 
                                     right: 10, 
-                                    left: 0, 
+                                    left: 15, 
                                     bottom: 20 
                                 }}
                                 >
@@ -656,7 +882,7 @@ export function Dashboard() {
                                     style: { fontSize: '0.75rem' }
                                     }}
                                     tick={{ fontSize: 10 }}
-                                    width={40}
+                                    width={45}
                                 />
                                 <Tooltip
                                     formatter={(value: number, name: string) => {
@@ -768,7 +994,7 @@ export function Dashboard() {
                                 margin={{ 
                                     top: 15, 
                                     right: 10, 
-                                    left: 0, 
+                                    left: 15, 
                                     bottom: 20 
                                 }}
                                 >
@@ -800,7 +1026,7 @@ export function Dashboard() {
                                     style: { fontSize: '0.75rem' }
                                     }}
                                     tick={{ fontSize: 10 }}
-                                    width={40}
+                                    width={45}
                                 />
                                 <Tooltip
                                     formatter={(value: number, name: string) => {

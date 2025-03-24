@@ -1,9 +1,24 @@
 import { Button } from '@/components/ui/button';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue 
+} from '@/components/ui/select';
 import { ViewControlsProps, ViewType } from '@/types/views';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, LayoutGrid, Smartphone } from 'lucide-react';
+import { useState } from 'react';
 
-export function ViewControls({ viewType, onViewTypeChange, onNavigate, currentDate }: ViewControlsProps) {
-  
+export function ViewControls({
+  viewType,
+  onViewTypeChange,
+  onNavigate,
+  currentDate,
+  viewLevel,
+  onViewLevelChange
+}: ViewControlsProps) {
+
   const formatDateRange = (date: Date, viewType: ViewType) => {
     if (viewType === 'day') {
         return date.toLocaleDateString('en-AU', { 
@@ -34,48 +49,79 @@ export function ViewControls({ viewType, onViewTypeChange, onNavigate, currentDa
   };
   
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
-      <div className="flex items-center gap-2 w-full sm:w-auto">
-        <Button
-          variant={viewType === 'day' ? 'default' : 'secondary'}
-          onClick={() => onViewTypeChange('day')}
-          className="flex-1 sm:flex-none"
-          size="sm"
-        >
-          Day
-        </Button>
-        <Button
-          variant={viewType === 'week' ? 'default' : 'secondary'}
-          onClick={() => onViewTypeChange('week')}
-          className="flex-1 sm:flex-none"
-          size="sm"
-        >
-          Week
-        </Button>
+    <div className="space-y-4">
+      {/* Category/Device Tabs */}
+      <div className="border-b mt-10">
+        <div className="flex justify-center space-x-6">
+          <button
+            onClick={() => onViewLevelChange('category')}
+            className={`pb-2 px-1 font-medium text-sm transition-colors relative ${
+              viewLevel === 'category' 
+                ? 'text-primary border-b-2 border-primary' 
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <LayoutGrid className="h-4 w-4" />
+              Categories
+            </span>
+          </button>
+          <button
+            onClick={() => onViewLevelChange('device')}
+            className={`pb-2 px-1 font-medium text-sm transition-colors relative ${
+              viewLevel === 'device' 
+                ? 'text-primary border-b-2 border-primary' 
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <Smartphone className="h-4 w-4" />
+              Devices
+            </span>
+          </button>
+        </div>
       </div>
       
-      <div className="flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-end">
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => onNavigate('prev')}
-          aria-label="Previous"
-          className="h-8 w-8"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <div className="text-sm font-medium min-w-20 text-center">
-          {formatDateRange(currentDate, viewType)}
+      {/* Date and View Type Controls - Together */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* Date Period Selector (Day/Week) - On left */}
+        <Select value={viewType} onValueChange={(value: ViewType) => onViewTypeChange(value)}>
+          <SelectTrigger className="w-[120px] h-9">
+            <div className="flex items-center gap-2 overflow-hidden">
+              <Calendar className="h-4 w-4 flex-shrink-0" />
+              <SelectValue placeholder="View" className="truncate" />
+            </div>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="day">Day</SelectItem>
+            <SelectItem value="week">Week</SelectItem>
+          </SelectContent>
+        </Select>
+        
+        {/* Date Navigation - On right */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => onNavigate('prev')}
+            aria-label="Previous"
+            className="h-8 w-8"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <div className="text-sm font-medium min-w-24 text-center">
+            {formatDateRange(currentDate, viewType)}
+          </div>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => onNavigate('next')}
+            aria-label="Next"
+            className="h-8 w-8"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => onNavigate('next')}
-          aria-label="Next"
-          className="h-8 w-8"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
       </div>
     </div>
   );
