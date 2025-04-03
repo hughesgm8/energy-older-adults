@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ViewControls } from '../ViewControls/ViewControls';
 import { ComparisonResult, participantComparisonService } from '@/services/ParticipantComparisonService';
 import { useDeviceData } from '../../hooks/useDeviceData';
-import { deviceCategorizationService } from '../../services/DashboardCategorizationService';
+import { deviceCategorizationService } from '../../services/DeviceCategorizationService';
 import { ViewType } from '../../types/views';
 import { EnergyChart } from './charts/EnergyChart';
 import { CategoryView } from './views/CategoryView';
@@ -172,17 +172,53 @@ export function Dashboard() {
       return `${startStr} - ${endStr}`;
     };
 
-    // Get color based on device category
-    const getCategoryColor = (deviceName: string) => {
-      const category = deviceCategorizationService.getDeviceCategory2(deviceName);
+    // Get color based either on device name or category name
+    const getCategoryColor = (input: string) => {
+      let category = input;
+      
+      // First check if input is already a category name by normalizing it
+      const normalizedInput = input.trim();
+      
+      // Map old/similar categories to standardized ones
+      const categoryMapping: Record<string, string> = {
+        // Standard categories
+        'Entertainment': 'Entertainment',
+        'Lighting': 'Lighting',
+        'Smart Lighting': 'Lighting',
+        'Kitchen': 'Kitchen',
+        'Smart Home': 'Smart Home',
+        'Heating': 'Heating & Cooling',
+        'Cooling': 'Heating & Cooling',
+        'Ambience': 'Heating & Cooling',
+        'Home Office': 'Home Office',
+        // Additional mappings
+        'Drink Prep': 'Kitchen',
+        'Cooking': 'Kitchen',
+      };
+      
+      // If input matches any known category (directly or via mapping), use the standardized version
+      if (categoryMapping[normalizedInput]) {
+        category = categoryMapping[normalizedInput];
+      } else {
+        // Otherwise, try to get the category from the device name
+        try {
+          const deviceCategory = deviceCategorizationService.getDeviceCategory(input);
+          // Map the device category to our standardized categories
+          category = categoryMapping[deviceCategory] || deviceCategory;
+        } catch (e) {
+          console.error(`Error getting category for "${input}":`, e);
+          // Just use the input as is if there's an error
+        }
+      }
+      
+      // Define colors for our standardized categories
       const colorMap: Record<string, string> = {
         'Entertainment': '#2563eb', // blue
-        'Smart Lighting': '#2dd4bf', // teal
-        'Kitchen': '#dc2626', // red
-        'Smart Home': '#8b5cf6', // purple
-        'Heating': '#f59e0b', // amber
-        'Cooling': '#3b82f6', // sky blue
-        'Home Office': '#10b981', // emerald
+        'Lighting': '#2dd4bf',      // teal
+        'Kitchen': '#dc2626',       // red
+        'Smart Home': '#8b5cf6',    // purple
+        'Heating & Cooling': '#f59e0b', // amber
+        'Home Office': '#10b981',   // emerald
       };
       
       return colorMap[category] || '#6b7280'; // gray as default
@@ -289,19 +325,20 @@ export function Dashboard() {
           )}
 
           {/* Chart Card */}
-          {viewLevel === 'device' && (
-            <Card className="shadow">
-              <CardContent className="pt-6">
+          <Card className="shadow">
+            <CardContent className="pt-6">
                 <EnergyChart 
-                  data={data}
-                  deviceData={deviceData}
-                  viewType={viewType}
-                  isMobile={isMobile}
-                  getUniqueDeviceColor={getUniqueDeviceColor}
+                data={data}
+                deviceData={deviceData}
+                viewType={viewType}
+                viewLevel={viewLevel}
+                selectedCategory={selectedCategory}
+                isMobile={isMobile}
+                getUniqueDeviceColor={getUniqueDeviceColor}
+                getCategoryColor={getCategoryColor}
                 />
-              </CardContent>
-            </Card>
-          )}
+            </CardContent>
+          </Card>
 
           {/* Cost Insights Section */}
           <CostInsights 

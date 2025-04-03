@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { PoundSterlingIcon, ArrowUpIcon, ArrowDownIcon } from 'lucide-react';
 import { CostEstimationService } from '@/services/CostEstimationService';
-import { deviceCategorizationService } from '@/services/DashboardCategorizationService';
+import { deviceCategorizationService } from '@/services/DeviceCategorizationService';
 import { DeviceData, DeviceDataResponse, DeviceInsights, DeviceReading } from '@/types/device';
 import { ViewType } from '@/types/views';
 import { getDeviceInsights } from './utils';
@@ -22,7 +22,7 @@ export function CostInsights({
 }: CostInsightsProps) {
   // Get background color for insight cards based on device category
   const getCategoryBgColor = (deviceName: string) => {
-    const category = deviceCategorizationService.getDeviceCategory2(deviceName);
+    const category = deviceCategorizationService.getDeviceCategory(deviceName);
     const bgColorMap: Record<string, string> = {
       'Entertainment': 'bg-blue-50',
       'Smart Lighting': 'bg-teal-50',

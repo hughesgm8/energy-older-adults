@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Activity } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend } from 'recharts';
 import { DeviceDataResponse, DeviceReading, CategoryReading } from '../../../types/device';
-import { deviceCategorizationService } from '../../../services/DashboardCategorizationService';
+import { deviceCategorizationService } from '../../../services/DeviceCategorizationService';
 
 interface CategoryViewProps {
   data: DeviceReading[];
@@ -20,14 +20,14 @@ export const CategoryView: React.FC<CategoryViewProps> = ({
 }) => {
   // Get all unique categories
   const categories = [...new Set(Object.values(deviceData).map(device => 
-    deviceCategorizationService.getDeviceCategory2(device.name)
+    deviceCategorizationService.getDeviceCategory(device.name)
   ))];
   
   // Transform data to category format
   const categoryData = categories.map(category => {
     // Get all devices in this category
     const devicesInCategory = Object.entries(deviceData).filter(([_, device]) => 
-      deviceCategorizationService.getDeviceCategory2(device.name) === category
+      deviceCategorizationService.getDeviceCategory(device.name) === category
     );
     
     // Calculate total for this category
@@ -79,60 +79,6 @@ export const CategoryView: React.FC<CategoryViewProps> = ({
           </Card>
         ))}
       </div>
-
-      {/* Category Chart */}
-      <Card className="shadow mt-6">
-        <CardContent className="pt-6">
-          <div className="h-60 sm:h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={categoryData}
-                margin={{ top: 15, right: 10, left: 15, bottom: 20 }}
-                layout={categories.length <= 3 ? "horizontal" : undefined}
-                barCategoryGap={categories.length <= 3 ? "20%" : "10%"}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="category"
-                  tick={{ fontSize: 10 }}
-                  height={60}
-                />
-                <YAxis
-                  label={{ 
-                    value: 'Energy (kW)', 
-                    angle: -90, 
-                    position: 'insideLeft',
-                    offset: -5,
-                    style: { fontSize: '0.75rem' }
-                  }}
-                  tick={{ fontSize: 10 }}
-                  width={45}
-                />
-                <Tooltip
-                  formatter={(value: number, name: string) => {
-                    if (name === "value") return [`${value.toFixed(3)} kW`, "Energy Usage"];
-                    return [value, name];
-                  }}
-                  contentStyle={{ fontSize: '0.875rem' }}
-                />
-                <Legend wrapperStyle={{ fontSize: '0.75rem' }} />
-                <Bar 
-                  dataKey="value" 
-                  name="Energy Usage" 
-                  fill="#8884d8"
-                  onClick={(data) => data.onClick()}
-                  cursor="pointer"
-                  barSize={60}
-                >
-                  {categories.map((category, index) => (
-                    <Cell key={`cell-${index}`} fill={getCategoryColor(category)} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
     </>
   );
 };

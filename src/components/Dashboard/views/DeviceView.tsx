@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Activity } from 'lucide-react';
-import { deviceCategorizationService } from '@/services/DashboardCategorizationService';
+import { deviceCategorizationService } from '@/services/DeviceCategorizationService';
 import { DeviceDataResponse, DeviceReading } from '@/types/device';
 
 interface DeviceViewProps {
@@ -16,7 +16,7 @@ export function DeviceView({ deviceData, data, selectedCategory }: DeviceViewPro
       {Object.entries(deviceData)
         .filter(([_, device]) => 
           // Only show devices in the selected category, or all if no category selected
-          !selectedCategory || deviceCategorizationService.getDeviceCategory2(device.name) === selectedCategory
+          !selectedCategory || deviceCategorizationService.getDeviceCategory(device.name) === selectedCategory
         )
         .map(([deviceKey, device]) => (
           <Card key={deviceKey} className="shadow-sm">
@@ -29,7 +29,7 @@ export function DeviceView({ deviceData, data, selectedCategory }: DeviceViewPro
             <CardContent>
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">
-                  {deviceCategorizationService.getDeviceCategory2(device.name)}
+                  {deviceCategorizationService.getDeviceCategory(device.name)}
                 </p>
                 <p className="text-lg font-medium">
                   {(() => {

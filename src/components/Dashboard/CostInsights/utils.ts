@@ -1,5 +1,5 @@
 import { DeviceData, DeviceReading, DeviceInsights, DeviceInsightsParams } from "@/types/device";
-import { deviceCategorizationService } from "@/services/DashboardCategorizationService";
+import { deviceCategorizationService } from "@/services/DeviceCategorizationService";
 
 export function getDeviceInsights(params: DeviceInsightsParams): DeviceInsights {
   const { deviceData, deviceKey, deviceInfo, viewType } = params;
@@ -36,7 +36,7 @@ export function getDeviceInsights(params: DeviceInsightsParams): DeviceInsights 
   }, { hour: 0, value: 0 });
   
   // Get device category from the categorization service
-  const deviceCategory = deviceCategorizationService.getDeviceCategory2(deviceInfo.name);
+  const deviceCategory = deviceCategorizationService.getDeviceCategory(deviceInfo.name);
   const consumptionType = deviceCategorizationService.getConsumptionType(deviceInfo.name);
   const insightTemplate = deviceCategorizationService.getInsightTemplate(deviceInfo.name);
   

@@ -1,26 +1,145 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, 
-  ResponsiveContainer, Legend, ComposedChart, Bar 
+  ResponsiveContainer, Legend, ComposedChart, Bar, BarChart,
+  Cell
 } from 'recharts';
 import { DeviceDataResponse, DeviceReading } from '../../../types/device';
 import { ViewType } from '../../../types/views';
+import { deviceCategorizationService } from '../../../services/DeviceCategorizationService';
 
 interface EnergyChartProps {
   data: DeviceReading[];
   deviceData: DeviceDataResponse;
   viewType: ViewType;
+  viewLevel: 'category' | 'device';
+  selectedCategory: string | null;
   isMobile: boolean;
   getUniqueDeviceColor: (deviceKey: string, index: number) => string;
+  getCategoryColor: (category: string) => string;
 }
 
 export const EnergyChart: React.FC<EnergyChartProps> = ({
   data,
   deviceData,
   viewType,
+  viewLevel,
+  selectedCategory,
   isMobile,
-  getUniqueDeviceColor
+  getUniqueDeviceColor,
+  getCategoryColor
 }) => {
+  // Track device colors for consistency
+  const [deviceColors, setDeviceColors] = useState<Record<string, string>>({});
+
+  // Build category data structure for category view
+  const getCategoryData = () => {
+    if (!deviceData || data.length === 0) return [];
+    
+    // Aggregate device data by category
+    const categoryTotals: Record<string, number> = {};
+    
+    Object.entries(deviceData).forEach(([deviceKey, device]) => {
+      const deviceName = device.name.toLowerCase().replace(/\s+/g, '_');
+      
+      // Get normalized category
+      let category = deviceCategorizationService.getDeviceCategory(device.name);
+      
+      // Skip devices from other categories if a category is selected
+      if (selectedCategory && category !== selectedCategory) {
+        return;
+      }
+      
+      // Sum up the values for this device
+      let deviceTotal = 0;
+      data.forEach(reading => {
+        if (typeof reading[deviceName] === 'number') {
+          deviceTotal += reading[deviceName];
+        }
+      });
+      
+      // Add to category total
+      if (!categoryTotals[category]) {
+        categoryTotals[category] = 0;
+      }
+      categoryTotals[category] += deviceTotal;
+    });
+    
+    // Convert to chart format
+    return Object.entries(categoryTotals).map(([category, total]) => ({
+      category,
+      value: total
+    }));
+  };
+  
+  // Build device colors on mount
+  useEffect(() => {
+    if (!deviceData) return;
+
+    const colors: Record<string, string> = {};
+
+    // Define our color map for categories
+    const categoryColorMap: Record<string, string> = {
+      'Entertainment': '#2563eb', // blue
+      'Lighting': '#2dd4bf', // teal
+      'Kitchen': '#dc2626', // red
+      'Smart Home': '#8b5cf6', // purple
+      'Heating & Cooling': '#f59e0b', // amber
+      'Home Office': '#10b981', // emerald
+      'Unknown': '#6b7280', // gray
+    };
+
+    // Track devices per category for shade variations
+    const categoryDeviceCounts: Record<string, number> = {};
+
+    // First pass: count devices per category
+    Object.entries(deviceData).forEach(([_, device]) => {
+      const category = deviceCategorizationService.getDeviceCategory(device.name);
+      categoryDeviceCounts[category] = (categoryDeviceCounts[category] || 0) + 1;
+    });
+
+    // Build color mapping for all devices
+    Object.entries(deviceData).forEach(([deviceKey, device], index) => {
+      try {
+        const category = deviceCategorizationService.getDeviceCategory(device.name);
+        console.log(`Device: ${device.name}, Category: ${category}`);
+        
+        let deviceColor;
+        
+        if (viewLevel === 'category' || !selectedCategory) {
+          // In category view or when no category is selected,
+          // use category color without modification
+          deviceColor = categoryColorMap[category] || '#6b7280';
+        } else {
+          // In device view with a selected category, generate unique colors
+          // for devices within the same category using variations of the base color
+          
+          // Track which number device this is in its category
+          const deviceCount = categoryDeviceCounts[category] || 1;
+          const deviceIndex = index % deviceCount;
+          
+          // If there's only one device in the category, use the category color
+          if (deviceCount <= 1) {
+            deviceColor = categoryColorMap[category] || '#6b7280';
+          } else {
+            // For multiple devices in a category, create variations
+            // Slight lightness/darkness variations for better visual distinction
+            // Using the getUniqueDeviceColor function to get unique variations
+            deviceColor = getUniqueDeviceColor(deviceKey, index);
+          }
+        }
+        
+        colors[deviceKey] = deviceColor;
+        console.log(`Assigned color for ${device.name}: ${colors[deviceKey]}`);
+      } catch (e) {
+        console.error(`Error getting color for ${device.name}:`, e);
+        colors[deviceKey] = getUniqueDeviceColor(deviceKey, index);
+      }
+    });
+    
+    setDeviceColors(colors);
+  }, [deviceData, selectedCategory, viewLevel, getUniqueDeviceColor]);
+
   if (data.length === 0) {
     return (
       <div className="flex justify-center items-center h-60 sm:h-80">
@@ -29,6 +148,69 @@ export const EnergyChart: React.FC<EnergyChartProps> = ({
     );
   }
 
+  // Render category view chart
+  if (viewLevel === 'category') {
+    const categoryData = getCategoryData();
+
+    // Test the getCategoryColor function directly
+    categoryData.forEach((item, index) => {
+      const catString = String(item.category);
+      try {
+        const color = getCategoryColor(catString);
+        console.warn(`Category "${catString}" -> Color "${color}"`);
+      } catch (error) {
+        console.error(`Error getting color for "${catString}":`, error);
+      }
+    });
+
+    return (
+      <div className="h-60 sm:h-80">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart
+            data={categoryData}
+            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis 
+              dataKey="category"
+              tick={{ fontSize: 10 }}
+              height={40}
+            />
+            <YAxis 
+              label={{ 
+                value: 'Energy (kW)', 
+                angle: -90, 
+                position: 'insideLeft',
+                offset: -5,
+                style: { fontSize: '0.75rem' }
+              }}
+              tick={{ fontSize: 10 }}
+              width={45}
+            />
+            <Tooltip 
+              formatter={(value: number) => [`${value.toFixed(3)} kW`]}
+              contentStyle={{ fontSize: '0.875rem' }}
+            />
+            <Legend />
+            <Bar 
+              dataKey="value" 
+              name="Energy Usage">
+              {categoryData.map((entry, index) => {
+                const catString = String(entry.category);
+                let color = getCategoryColor(catString);
+                
+                return (
+                  <Cell key={`cell-${index}`} fill={color} />
+                );
+              })}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  }
+
+  // Otherwise render device view chart
   return (
     <div className="h-60 sm:h-80">
       <ResponsiveContainer width="100%" height="100%">
@@ -36,12 +218,7 @@ export const EnergyChart: React.FC<EnergyChartProps> = ({
           // Day view - Line chart
           <LineChart
             data={data}
-            margin={{ 
-              top: 15, 
-              right: 10, 
-              left: 15, 
-              bottom: 20 
-            }}
+            margin={{ top: 15, right: 10, left: 15, bottom: 20 }}
           >
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis
@@ -94,33 +271,38 @@ export const EnergyChart: React.FC<EnergyChartProps> = ({
               height={30}
               wrapperStyle={{ fontSize: '0.75rem' }}
             />
-            {Object.entries(deviceData).map(([deviceKey, device], index) => {
-              const deviceName = device.name.toLowerCase().replace(/\s+/g, '_');
-              const color = getUniqueDeviceColor(deviceKey, index);
-              
-              return (
-                <Line
-                  key={deviceKey}
-                  type="monotone"
-                  dataKey={deviceName}
-                  stroke={color}
-                  name={device.name}
-                  strokeWidth={2}
-                  dot={false}
-                />
-              );
-            })}
+            
+            {/* Filter devices by selected category if needed */}
+            {Object.entries(deviceData)
+              .filter(([_, device]) => {
+                if (!selectedCategory) return true;
+                const category = deviceCategorizationService.getDeviceCategory(device.name);
+                return category === selectedCategory;
+              })
+              .map(([deviceKey, device], index) => {
+                const deviceName = device.name.toLowerCase().replace(/\s+/g, '_');
+                // Use the color from our state, or a default if not yet computed
+                const color = deviceColors[deviceKey] || '#6b7280';
+                
+                return (
+                  <Line
+                    key={deviceKey}
+                    type="monotone"
+                    dataKey={deviceName}
+                    stroke={color}
+                    name={device.name}
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                );
+              })
+            }
           </LineChart>
         ) : (
-          // Week view
+          // Week view - ComposedChart 
           <ComposedChart
             data={data}
-            margin={{ 
-              top: 15, 
-              right: 10, 
-              left: 15, 
-              bottom: 20 
-            }}
+            margin={{ top: 15, right: 10, left: 15, bottom: 20 }}
           >
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis
@@ -177,35 +359,48 @@ export const EnergyChart: React.FC<EnergyChartProps> = ({
               height={30}
               wrapperStyle={{ fontSize: '0.75rem' }}
             />
-            {/* Add bars for each device */}
-            {Object.entries(deviceData).map(([deviceKey, device], index) => {
-              const deviceName = device.name.toLowerCase().replace(/\s+/g, '_');
-              const color = getUniqueDeviceColor(deviceKey, index);
-              
-              return (
-                <Bar
-                  key={deviceKey}
-                  dataKey={deviceName}
-                  name={device.name}
-                  fill={color}
-                  // Larger bars on mobile for easier tapping
-                  barSize={window.innerWidth < 768 ? 30 : 20}
-                />
-              );
-            })}
             
-            {/* Add line for total energy consumption */}
+            {/* Filter devices by selected category if needed */}
+            {Object.entries(deviceData)
+              .filter(([_, device]) => {
+                if (!selectedCategory) return true;
+                const category = deviceCategorizationService.getDeviceCategory(device.name);
+                return category === selectedCategory;
+              })
+              .map(([deviceKey, device], index) => {
+                const deviceName = device.name.toLowerCase().replace(/\s+/g, '_');
+                // Use the color from our state, or a default if not yet computed
+                const color = deviceColors[deviceKey] || '#6b7280';
+                
+                return (
+                  <Bar
+                    key={deviceKey}
+                    dataKey={deviceName}
+                    name={device.name}
+                    fill={color}
+                    barSize={window.innerWidth < 768 ? 30 : 20}
+                  />
+                );
+              })
+            }
+            
             <Line
               type="linear"
               dataKey={(data) => {
-                // Calculate total for each day from all devices
+                // Only include selected category devices in total if category is selected
                 let total = 0;
-                Object.values(deviceData).forEach(device => {
-                  const deviceName = device.name.toLowerCase().replace(/\s+/g, '_');
-                  if (typeof data[deviceName] === 'number') {
-                    total += data[deviceName];
-                  }
-                });
+                Object.values(deviceData)
+                  .filter((device) => {
+                    if (!selectedCategory) return true;
+                    const category = deviceCategorizationService.getDeviceCategory(device.name);
+                    return category === selectedCategory;
+                  })
+                  .forEach(device => {
+                    const deviceName = device.name.toLowerCase().replace(/\s+/g, '_');
+                    if (typeof data[deviceName] === 'number') {
+                      total += data[deviceName];
+                    }
+                  });
                 return total;
               }}
               name="total"
