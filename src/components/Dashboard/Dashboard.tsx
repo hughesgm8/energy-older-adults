@@ -92,6 +92,15 @@ export function Dashboard() {
       setViewLevel('category');
     };
 
+    // Add this new function to handle view level change from ViewControls
+    const handleViewLevelChange = (newLevel: 'category' | 'device') => {
+      setViewLevel(newLevel);
+      // If switching back to category view, clear the selected category
+      if (newLevel === 'category') {
+        setSelectedCategory(null);
+      }
+    };
+
     const handleNavigate = (direction: 'prev' | 'next') => {
       if (!availableDateRange) return;
   
@@ -272,7 +281,9 @@ export function Dashboard() {
               Your Energy Usage ({participantId})
             </h1>
           </div>
-          {viewLevel === 'category' && selectedCategory && (
+          
+          {/* Breadcrumbs */}
+          {(viewLevel === 'device' || selectedCategory) && (
             <div className="flex items-center mb-4 border-b pb-2">
               <Button 
                 variant="ghost" 
@@ -285,8 +296,12 @@ export function Dashboard() {
                 </svg>
                 All Categories
               </Button>
-              <span className="mx-2">›</span>
-              <span className="font-medium">{selectedCategory}</span>
+              {selectedCategory && (
+                <>
+                  <span className="mx-2">›</span>
+                  <span className="font-medium">{selectedCategory}</span>
+                </>
+              )}
             </div>
           )}
 
@@ -297,7 +312,7 @@ export function Dashboard() {
             onNavigate={handleNavigate}
             currentDate={currentDate}
             viewLevel={viewLevel}
-            onViewLevelChange={setViewLevel} 
+            onViewLevelChange={handleViewLevelChange} // Use the new handler here
           />
 
           {/* Date Range Info */}
@@ -332,7 +347,7 @@ export function Dashboard() {
                 deviceData={deviceData}
                 viewType={viewType}
                 viewLevel={viewLevel}
-                selectedCategory={selectedCategory}
+                selectedCategory={viewLevel === 'category' ? null : selectedCategory} // Only pass selectedCategory when in device view
                 isMobile={isMobile}
                 getUniqueDeviceColor={getUniqueDeviceColor}
                 getCategoryColor={getCategoryColor}
