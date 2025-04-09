@@ -9,15 +9,15 @@ import {
 import { ViewControlsProps, ViewType } from '@/types/views';
 import { Calendar, ChevronLeft, ChevronRight, LayoutGrid, Smartphone } from 'lucide-react';
 import { useState } from 'react';
+import React from 'react';
 
-export function ViewControls({
+function ViewControlsBase({
   viewType,
   onViewTypeChange,
   onNavigate,
   currentDate,
-  viewLevel,
-  onViewLevelChange
 }: ViewControlsProps) {
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const formatDateRange = (date: Date, viewType: ViewType) => {
     if (viewType === 'day') {
@@ -50,38 +50,6 @@ export function ViewControls({
   
   return (
     <div className="space-y-4">
-      {/* Category/Device Tabs */}
-      <div className="border-b mt-10">
-        <div className="flex justify-center space-x-6">
-          <button
-            onClick={() => onViewLevelChange('category')}
-            className={`pb-2 px-1 font-medium text-sm transition-colors relative ${
-              viewLevel === 'category' 
-                ? 'text-primary border-b-2 border-primary' 
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <span className="flex items-center gap-2">
-              <LayoutGrid className="h-4 w-4" />
-              Categories
-            </span>
-          </button>
-          <button
-            onClick={() => onViewLevelChange('device')}
-            className={`pb-2 px-1 font-medium text-sm transition-colors relative ${
-              viewLevel === 'device' 
-                ? 'text-primary border-b-2 border-primary' 
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <span className="flex items-center gap-2">
-              <Smartphone className="h-4 w-4" />
-              Devices
-            </span>
-          </button>
-        </div>
-      </div>
-      
       {/* Date and View Type Controls - Together */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         {/* Date Period Selector (Day/Week) - On left */}
@@ -100,29 +68,49 @@ export function ViewControls({
         
         {/* Date Navigation - On right */}
         <div className="flex items-center gap-2">
-          <Button
+        <Button
             variant="outline"
             size="icon"
-            onClick={() => onNavigate('prev')}
+            onClick={() => {
+              setIsNavigating(true);
+              onNavigate('prev');
+              setTimeout(() => setIsNavigating(false), 300);
+            }}
             aria-label="Previous"
             className="h-8 w-8"
+            disabled={isNavigating}
           >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
+            {isNavigating ? (
+              <span className="animate-spin">↻</span>
+            ): (
+              <ChevronLeft className="h-4 w-4" />
+            )}
+            </Button>
           <div className="text-sm font-medium min-w-24 text-center">
             {formatDateRange(currentDate, viewType)}
           </div>
           <Button
             variant="outline"
             size="icon"
-            onClick={() => onNavigate('next')}
+            onClick={() => {
+              setIsNavigating(true);
+              onNavigate('next');
+              setTimeout(() => setIsNavigating(false), 300);
+            }}
             aria-label="Next"
             className="h-8 w-8"
+            disabled={isNavigating}
           >
-            <ChevronRight className="h-4 w-4" />
+            {isNavigating ? (
+              <span className="animate-spin">↻</span>
+            ): (
+              <ChevronRight className="h-4 w-4" />
+            )}
           </Button>
         </div>
       </div>
     </div>
   );
 }
+
+export const ViewControls = React.memo(ViewControlsBase);

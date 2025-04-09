@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { DeviceDataResponse, DeviceReading, TimeRange } from '../types/device';
 import { ViewType } from '../types/views';
 import { generateMockDeviceData } from '../mocks/mockDeviceGenerator';
@@ -113,6 +113,12 @@ export function useDeviceData(participantId: string | undefined, currentDate: Da
     );
   };
 
+  // Use useMemo to generate mock data only once
+  const mockDeviceData = useMemo(() => {
+    console.log('Generating mock device data (should happen only once)');
+    return generateMockDeviceData(30); // Generate a full month of data
+  }, []);
+
   // Fetch the device data
   useEffect(() => {
     const fetchDeviceData = async () => {
@@ -131,8 +137,7 @@ export function useDeviceData(participantId: string | undefined, currentDate: Da
         if (useFakeData) {
           // Use the mock data generator
           console.log('Using mock device data');
-          const fakeData = generateMockDeviceData();
-          setDeviceData(fakeData);
+          setDeviceData(mockDeviceData);
           setIsLoading(false);
           return;
         }
@@ -163,7 +168,7 @@ export function useDeviceData(participantId: string | undefined, currentDate: Da
     };
 
     fetchDeviceData();
-  }, [participantId]);
+  }, [participantId, mockDeviceData]);
 
   // Process data when device data or date/view changes
   useEffect(() => {

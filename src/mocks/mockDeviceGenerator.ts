@@ -2,10 +2,10 @@ import { DeviceDataResponse } from '../types/device';
 
 /**
  * Generates realistic mock data for energy devices
- * @param days Number of days to generate data for (default: 7)
+ * @param days Number of days to generate data for (default: 30)
  * @returns Mock device data in the format expected by the dashboard
  */
-export function generateMockDeviceData(days = 7): DeviceDataResponse {
+export function generateMockDeviceData(days = 30): DeviceDataResponse {
   return {
     // Existing devices from your dataset
     // ... 
@@ -15,70 +15,70 @@ export function generateMockDeviceData(days = 7): DeviceDataResponse {
       name: 'Living Room Light',
       hourly: {
         timestamps: generateTimestamps(days),
-        data: generateLightData(0.01, 'evening') // 10W bulb, evening pattern
+        data: generateLightData(0.01, 'evening', days) // 10W bulb, evening pattern
       }
     },
     'bedroom_light': {
       name: 'Bedroom Light',
       hourly: {
         timestamps: generateTimestamps(days),
-        data: generateLightData(0.01, 'evening') 
+        data: generateLightData(0.01, 'evening', days) 
       }
     },
     'kitchen_light': {
       name: 'Kitchen Light',
       hourly: {
         timestamps: generateTimestamps(days),
-        data: generateLightData(0.012, 'morning_evening') // 12W, morning and evening
+        data: generateLightData(0.012, 'morning_evening', days) // 12W, morning and evening
       }
     },
     'bathroom_light': {
       name: 'Bathroom Light',
       hourly: {
         timestamps: generateTimestamps(days),
-        data: generateLightData(0.009, 'intermittent') // 9W, intermittent use
+        data: generateLightData(0.009, 'intermittent', days) // 9W, intermittent use
       }
     },
     'hallway_light': {
       name: 'Hallway Light',
       hourly: {
         timestamps: generateTimestamps(days),
-        data: generateLightData(0.008, 'evening') // 8W, evening use
+        data: generateLightData(0.008, 'evening', days) // 8W, evening use
       }
     },
     'space_heater': {
       name: 'Space Heater',
       hourly: {
         timestamps: generateTimestamps(days), 
-        data: generateHeaterData(1.2) // 1.2kW heater
+        data: generateHeaterData(1.2, days) // 1.2kW heater
       }
     },
     'electric_kettle': {
       name: 'Electric Kettle',
       hourly: {
         timestamps: generateTimestamps(days),
-        data: generateKettleData(2) // 2kW kettle
+        data: generateKettleData(2, days) // 2kW kettle
       }
     },
     'coffee_maker': {
       name: 'Coffee Maker',
       hourly: {
         timestamps: generateTimestamps(days),
-        data: generateCoffeeMakerData(0.9) // 900W coffee maker
+        data: generateCoffeeMakerData(0.9, days) // 900W coffee maker
       }
     },
     'microwave': {
       name: 'Microwave',
       hourly: {
         timestamps: generateTimestamps(days),
-        data: generateMicrowaveData(1) // 1kW microwave
+        data: generateMicrowaveData(1, days) // 1kW microwave
       }
     },
     'toaster': {
       name: 'Toaster',
       hourly: {
         timestamps: generateTimestamps(days),
-        data: generateToasterData(1.1) // 1.1kW toaster
+        data: generateToasterData(1.1, days) // 1.1kW toaster
       }
     }
   };
@@ -86,7 +86,7 @@ export function generateMockDeviceData(days = 7): DeviceDataResponse {
 
 // Helper functions for generating data patterns
 
-function generateTimestamps(days = 7): string[] {
+function generateTimestamps(days = 30): string[] {
   const timestamps = [];
   const now = new Date();
   const startDate = new Date(now);
@@ -105,9 +105,9 @@ function generateTimestamps(days = 7): string[] {
   return timestamps;
 }
 
-function generateLightData(power: number, pattern: 'evening' | 'morning_evening' | 'intermittent'): number[] {
+function generateLightData(power: number, pattern: 'evening' | 'morning_evening' | 'intermittent', days = 30): number[] {
   const data = [];
-  for (let d = 0; d < 7; d++) {
+  for (let d = 0; d < days; d++) {
     for (let h = 0; h < 24; h++) {
       let usage = 0;
       
@@ -140,9 +140,9 @@ function generateLightData(power: number, pattern: 'evening' | 'morning_evening'
   return data;
 }
 
-function generateHeaterData(power: number): number[] {
+function generateHeaterData(power: number, days = 30): number[] {
   const data = [];
-  for (let d = 0; d < 7; d++) {
+  for (let d = 0; d < days; d++) {
     // Weekend vs weekday pattern
     const isWeekend = d % 7 >= 5;
     
@@ -173,9 +173,9 @@ function generateHeaterData(power: number): number[] {
   return data;
 }
 
-function generateKettleData(power: number): number[] {
+function generateKettleData(power: number, days = 30): number[] {
   const data = [];
-  for (let d = 0; d < 7; d++) {
+  for (let d = 0; d < days; d++) {
     const isWeekend = d % 7 >= 5;
     
     for (let h = 0; h < 24; h++) {
@@ -211,9 +211,9 @@ function generateKettleData(power: number): number[] {
   return data;
 }
 
-function generateCoffeeMakerData(power: number): number[] {
+function generateCoffeeMakerData(power: number, days = 30): number[] {
   const data = [];
-  for (let d = 0; d < 7; d++) {
+  for (let d = 0; d < days; d++) {
     const isWeekend = d % 7 >= 5;
     
     for (let h = 0; h < 24; h++) {
@@ -244,9 +244,9 @@ function generateCoffeeMakerData(power: number): number[] {
   return data;
 }
 
-function generateMicrowaveData(power: number): number[] {
+function generateMicrowaveData(power: number, days = 30): number[] {
   const data = [];
-  for (let d = 0; d < 7; d++) {
+  for (let d = 0; d < days; d++) {
     const isWeekend = d % 7 >= 5;
     
     for (let h = 0; h < 24; h++) {
@@ -287,9 +287,9 @@ function generateMicrowaveData(power: number): number[] {
   return data;
 }
 
-function generateToasterData(power: number): number[] {
+function generateToasterData(power: number, days = 30): number[] {
   const data = [];
-  for (let d = 0; d < 7; d++) {
+  for (let d = 0; d < days; d++) {
     const isWeekend = d % 7 >= 5;
     
     for (let h = 0; h < 24; h++) {

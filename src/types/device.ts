@@ -54,3 +54,9 @@ export interface TimeRange {
     start: Date;
     end: Date;
 }
+
+export interface CategoryComparison {
+    current: number;
+    average: number;
+    percentChange: number;
+  }

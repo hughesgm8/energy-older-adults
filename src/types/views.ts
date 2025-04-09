@@ -10,6 +10,4 @@ export interface ViewControlsProps {
     onViewTypeChange: (viewType: ViewType) => void;
     onNavigate: (direction: 'prev' | 'next') => void;
     currentDate: Date;
-    viewLevel: 'category' | 'device';
-    onViewLevelChange: (viewLevel: 'category' | 'device') => void;
   }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import { CategoryView } from './views/CategoryView';
 import { DeviceView } from './views/DeviceView';
 import { CostInsights } from './CostInsights/CostInsights';
 import { SocialComparison } from './SocialComparison/SocialComparison';
+import { useHistoricalData } from '../../hooks/useHistoricalData';
 
 export function Dashboard() {
     const { participantId } = useParams();
@@ -19,7 +20,6 @@ export function Dashboard() {
     const [currentDate, setCurrentDate] = useState<Date>(new Date());
     const [comparisons, setComparisons] = useState<ComparisonResult[]>([]);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-    const [viewLevel, setViewLevel] = useState<'category' | 'device'>('category');
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
     // Use our custom hook to fetch and manage device data
@@ -32,6 +32,16 @@ export function Dashboard() {
       availableDateRange,
       getTimeRange
     } = useDeviceData(participantId, currentDate, viewType);
+
+    const {
+      comparisonData,
+      isLoading: isLoadingHistorical
+    } = useHistoricalData(
+      participantId,
+      deviceData,
+      data,
+      viewType
+    );
 
     useEffect(() => {
       // Handle window resize for mobile detection
@@ -84,29 +94,33 @@ export function Dashboard() {
 
     const handleCategoryClick = (category: string) => {
       setSelectedCategory(category);
-      setViewLevel('device');
     };
     
     const handleBackToCategories = () => {
       setSelectedCategory(null);
-      setViewLevel('category');
     };
 
-    // Add this new function to handle view level change from ViewControls
-    const handleViewLevelChange = (newLevel: 'category' | 'device') => {
-      setViewLevel(newLevel);
-      // If switching back to category view, clear the selected category
-      if (newLevel === 'category') {
-        setSelectedCategory(null);
-      }
-    };
-
-    const handleNavigate = (direction: 'prev' | 'next') => {
+    const handleNavigate = useCallback((direction: 'prev' | 'next') => {
       if (!availableDateRange) return;
-  
-      // Get all unique dates from all devices
-      const allDates = new Set<string>();
       
+      console.log("Navigation triggered:", direction, "Current date:", currentDate.toISOString());
+      
+      // STEP 1: Calculate target date based on current view type
+      const newTargetDate = new Date(currentDate);
+      
+      if (viewType === 'day') {
+        // For day view, simply move by 1 day
+        newTargetDate.setDate(newTargetDate.getDate() + (direction === 'next' ? 1 : -1));
+      } else {
+        // For week view, move by 7 days exactly
+        newTargetDate.setDate(newTargetDate.getDate() + (direction === 'next' ? 7 : -7));
+      }
+      
+      console.log("Target date calculated:", newTargetDate.toISOString());
+    
+      // STEP 2: Get all unique dates from available data
+      const allDates = new Set<string>();
+          
       Object.values(deviceData).forEach(device => {
         if (device?.hourly?.timestamps) {
           device.hourly.timestamps.forEach(timestamp => {
@@ -117,69 +131,120 @@ export function Dashboard() {
         }
       });
       
-      // Convert to Date objects and sort
+      if (allDates.size === 0) {
+        console.log("No available dates found in data");
+        return;
+      }
+      
+      // STEP 3: Convert to Date objects and sort
       const sortedUniqueDates = [...allDates]
         .map(dateStr => new Date(dateStr))
         .sort((a, b) => a.getTime() - b.getTime());
       
-      // Find current date (without time component)
-      const currentDateStr = currentDate.toISOString().split('T')[0];
-      const currentIndex = sortedUniqueDates.findIndex(
-        date => date.toISOString().split('T')[0] === currentDateStr
+      console.log("Available dates range:", 
+        sortedUniqueDates[0].toISOString(), "to", 
+        sortedUniqueDates[sortedUniqueDates.length - 1].toISOString(),
+        "Total dates:", sortedUniqueDates.length);
+      
+      // STEP 4: Find the best matching date for our target
+      const targetDateStr = newTargetDate.toISOString().split('T')[0];
+      
+      // First try to find exact match
+      let matchIndex = sortedUniqueDates.findIndex(
+        date => date.toISOString().split('T')[0] === targetDateStr
       );
       
-      // If current date not found, use closest match
-      let targetIndex = currentIndex;
-      if (targetIndex === -1) {
-        // Find closest date
-        const closestDate = sortedUniqueDates.reduce((prev, curr) => {
-          const prevDiff = Math.abs(prev.getTime() - currentDate.getTime());
-          const currDiff = Math.abs(curr.getTime() - currentDate.getTime());
-          return prevDiff < currDiff ? prev : curr;
-        });
+      // If no exact match, find closest available date
+      if (matchIndex === -1) {
+        console.log("No exact match for target date, finding closest available date");
         
-        targetIndex = sortedUniqueDates.findIndex(
-          date => date.getTime() === closestDate.getTime()
-        );
+        if (viewType === 'day') {
+          // For day view, find closest date
+          const closestDate = sortedUniqueDates.reduce((prev, curr) => {
+            const prevDiff = Math.abs(prev.getTime() - newTargetDate.getTime());
+            const currDiff = Math.abs(curr.getTime() - newTargetDate.getTime());
+            return prevDiff < currDiff ? prev : curr;
+          });
+          
+          matchIndex = sortedUniqueDates.findIndex(
+            date => date.getTime() === closestDate.getTime()
+          );
+          console.log("Selected closest available date:", sortedUniqueDates[matchIndex].toISOString());
+        } else {
+          // For week view, try to find a date in the target week
+          // Define target week boundaries
+          const targetWeekStart = new Date(newTargetDate);
+          const dayOfWeek = targetWeekStart.getDay();
+          targetWeekStart.setDate(targetWeekStart.getDate() - dayOfWeek); // Go to Sunday
+          
+          const targetWeekEnd = new Date(targetWeekStart);
+          targetWeekEnd.setDate(targetWeekStart.getDate() + 6); // Go to Saturday
+          
+          // Find any date within the target week
+          matchIndex = sortedUniqueDates.findIndex(date => 
+            date >= targetWeekStart && date <= targetWeekEnd
+          );
+          
+          // If no date in target week, use closest date to target week start
+          if (matchIndex === -1) {
+            const closestDate = sortedUniqueDates.reduce((prev, curr) => {
+              const prevDiff = Math.abs(prev.getTime() - targetWeekStart.getTime());
+              const currDiff = Math.abs(curr.getTime() - targetWeekStart.getTime());
+              return prevDiff < currDiff ? prev : curr;
+            });
+            
+            matchIndex = sortedUniqueDates.findIndex(
+              date => date.getTime() === closestDate.getTime()
+            );
+            console.log("No date in target week, using closest available date:", 
+              sortedUniqueDates[matchIndex].toISOString());
+          } else {
+            console.log("Found date within target week:", sortedUniqueDates[matchIndex].toISOString());
+          }
+        }
       }
       
-      // Navigate based on direction
-      if (direction === 'prev') {
-        targetIndex = Math.max(0, targetIndex - 1);
-      } else {
-        targetIndex = Math.min(sortedUniqueDates.length - 1, targetIndex + 1);
-      }
+      // STEP 5: Ensure we don't go beyond available data range
+      matchIndex = Math.max(0, Math.min(sortedUniqueDates.length - 1, matchIndex));
+      const finalDate = sortedUniqueDates[matchIndex];
       
-      // Set to the target date
-      const newDate = new Date(sortedUniqueDates[targetIndex]);
-      console.log(`Navigating to: ${newDate.toISOString().split('T')[0]}`);
-      setCurrentDate(newDate);
-    };
+      console.log(`Navigating to: ${finalDate.toISOString()}`);
+      setCurrentDate(finalDate);
+      
+    }, [availableDateRange, deviceData, currentDate, viewType]);
 
     // Helper function to format date range for display
-    const formatDateRange = (start: Date, end: Date, viewType: ViewType) => {
-      if (viewType === 'day') {
-        return end.toLocaleDateString('en-AU', { 
-          day: 'numeric', 
-          month: 'short', 
-          year: 'numeric'
-        });
-      }
-      
-      // For week view
-      const startStr = start.toLocaleDateString('en-AU', { 
-        day: 'numeric', 
-        month: 'short'
-      });
-      
-      const endStr = end.toLocaleDateString('en-AU', { 
-        day: 'numeric', 
-        month: 'short', 
-        year: 'numeric'
-      });
-      
-      return `${startStr} - ${endStr}`;
-    };
+    const formatDateRange = (date: Date, viewType: ViewType) => {
+  if (viewType === 'day') {
+    return date.toLocaleDateString('en-AU', { 
+      day: 'numeric', 
+      month: 'short'
+    });
+  }
+    
+  // For week view, ALWAYS calculate Sunday to Saturday based on the current date
+  const sunday = new Date(date);
+  const currentDayOfWeek = date.getDay();
+  sunday.setDate(date.getDate() - currentDayOfWeek); // Go back to Sunday
+  
+  const saturday = new Date(sunday);
+  saturday.setDate(sunday.getDate() + 6); // Go forward to Saturday
+  
+  console.log("Week view showing:", sunday.toISOString(), "to", saturday.toISOString());
+  
+  // Format the dates
+  const startStr = sunday.toLocaleDateString('en-AU', { 
+    day: 'numeric', 
+    month: 'short'
+  });
+  
+  const endStr = saturday.toLocaleDateString('en-AU', { 
+    day: 'numeric', 
+    month: 'short'
+  });
+  
+  return `${startStr} - ${endStr}`;
+};
 
     // Get color based either on device name or category name
     const getCategoryColor = (input: string) => {
@@ -283,7 +348,7 @@ export function Dashboard() {
           </div>
           
           {/* Breadcrumbs */}
-          {(viewLevel === 'device' || selectedCategory) && (
+          {selectedCategory !== null && (
             <div className="flex items-center mb-4 border-b pb-2">
               <Button 
                 variant="ghost" 
@@ -296,12 +361,8 @@ export function Dashboard() {
                 </svg>
                 All Categories
               </Button>
-              {selectedCategory && (
-                <>
-                  <span className="mx-2">›</span>
-                  <span className="font-medium">{selectedCategory}</span>
-                </>
-              )}
+              <span className="mx-2">›</span>
+              <span className="font-medium">{selectedCategory}</span>
             </div>
           )}
 
@@ -311,24 +372,23 @@ export function Dashboard() {
             onViewTypeChange={setViewType}
             onNavigate={handleNavigate}
             currentDate={currentDate}
-            viewLevel={viewLevel}
-            onViewLevelChange={handleViewLevelChange} // Use the new handler here
           />
 
           {/* Date Range Info */}
           <div className="text-sm text-gray-600 mb-4 text-center sm:text-left">
-            Showing data from {formatDateRange(timeRange.start, timeRange.end, viewType)}
+            Showing data from {formatDateRange(currentDate, viewType)}
             {data.length === 0 && " (No data available for this period)"}
           </div>
 
           {/* Dynamic Content - Either Categories or Devices */}
-          {viewLevel === 'category' ? (
+          {selectedCategory === null ? (
             // Category View Component
             <CategoryView 
               data={data}
               deviceData={deviceData}
               onCategoryClick={handleCategoryClick}
               getCategoryColor={getCategoryColor}
+              comparisonData={comparisonData}
             />
           ) : (
             // Device View
@@ -346,8 +406,8 @@ export function Dashboard() {
                 data={data}
                 deviceData={deviceData}
                 viewType={viewType}
-                viewLevel={viewLevel}
-                selectedCategory={viewLevel === 'category' ? null : selectedCategory} // Only pass selectedCategory when in device view
+                viewLevel={selectedCategory === null ? 'category' : 'device'}
+                selectedCategory={selectedCategory}
                 isMobile={isMobile}
                 getUniqueDeviceColor={getUniqueDeviceColor}
                 getCategoryColor={getCategoryColor}
@@ -361,6 +421,8 @@ export function Dashboard() {
             deviceData={deviceData}
             previousWeekData={previousWeekData}
             viewType={viewType}
+            viewLevel={selectedCategory === null ? 'category' : 'device'}
+            selectedCategory={selectedCategory}
           />
 
           {/* Social Comparison Section */}

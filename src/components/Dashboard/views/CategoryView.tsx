@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Activity } from 'lucide-react';
+import { Activity, TrendingUp, TrendingDown } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend } from 'recharts';
 import { DeviceDataResponse, DeviceReading, CategoryReading } from '../../../types/device';
 import { deviceCategorizationService } from '../../../services/DeviceCategorizationService';
@@ -10,13 +10,19 @@ interface CategoryViewProps {
   deviceData: DeviceDataResponse;
   onCategoryClick: (category: string) => void;
   getCategoryColor: (deviceName: string) => string;
+  comparisonData?: Record<string, {
+    current: number;
+    average: number;
+    percentChange: number;
+  }>;
 }
 
 export const CategoryView: React.FC<CategoryViewProps> = ({
   data,
   deviceData,
   onCategoryClick,
-  getCategoryColor
+  getCategoryColor,
+  comparisonData = {}
 }) => {
   // Get all unique categories
   const categories = [...new Set(Object.values(deviceData).map(device => 
@@ -41,11 +47,15 @@ export const CategoryView: React.FC<CategoryViewProps> = ({
       });
       return total + dayTotal;
     }, 0);
+
+    // Get comparison data if available
+    const comparison = comparisonData[category];
     
     return {
       category,
       value: categoryTotal,
       deviceCount: devicesInCategory.length,
+      comparison,
       // For onClick handling
       onClick: () => onCategoryClick(category)
     };
@@ -71,9 +81,29 @@ export const CategoryView: React.FC<CategoryViewProps> = ({
                 <p className="text-sm text-muted-foreground">
                   {category.deviceCount} {category.deviceCount === 1 ? 'device' : 'devices'}
                 </p>
-                <p className="text-lg font-medium">
-                  {category.value.toFixed(2)} kW
-                </p>
+                <div className="flex justify-between items-center">
+                  <p className="text-lg font-medium">
+                    {category.value.toFixed(2)} kW
+                  </p>
+                  
+                  {/* Comparison indicator */}
+                  {category.comparison && (
+                    <div className={`flex items-center text-sm ${
+                      category.comparison.percentChange > 0 
+                        ? 'text-red-500' 
+                        : category.comparison.percentChange < 0 
+                          ? 'text-green-500' 
+                          : 'text-gray-500'
+                    }`}>
+                      {category.comparison.percentChange > 0 ? (
+                        <TrendingUp className="w-4 h-4 mr-1" />
+                      ) : category.comparison.percentChange < 0 ? (
+                        <TrendingDown className="w-4 h-4 mr-1" />
+                      ) : null}
+                      {Math.abs(category.comparison.percentChange)}% vs. avg
+                    </div>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
