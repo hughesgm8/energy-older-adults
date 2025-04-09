@@ -11,14 +11,24 @@ import { EnergyChart } from './charts/EnergyChart';
 import { CategoryView } from './views/CategoryView';
 import { DeviceView } from './views/DeviceView';
 import { CostInsights } from './CostInsights/CostInsights';
-import { SocialComparison } from './SocialComparison/SocialComparison';
 import { useHistoricalData } from '../../hooks/useHistoricalData';
+
+/* SOCIAL COMPARISON FEATURE
+This feature is temporarily disabled due to lack of realistic comparison data. 
+The code is preserved for future implementation.
+To re-enable:
+1. Uncomment the SocialComparison import statement below.
+2. Uncomment the SocialComparison component below ("useState<ComparisonResult[]>([])")
+3. Uncomment the related state and effect in this file
+4. Ensure the participantComparisonService is properly configured with realistic data
+*/
+// import { SocialComparison } from './SocialComparison/SocialComparison';
 
 export function Dashboard() {
     const { participantId } = useParams();
     const [viewType, setViewType] = useState<ViewType>('day');
     const [currentDate, setCurrentDate] = useState<Date>(new Date());
-    const [comparisons, setComparisons] = useState<ComparisonResult[]>([]);
+    // const [comparisons, setComparisons] = useState<ComparisonResult[]>([]);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
@@ -60,7 +70,8 @@ export function Dashboard() {
       }
     }, [availableDateRange, isLoading]);
 
-    const fetchComparisons = async () => {
+    
+    /* const fetchComparisons = async () => {
       if (!participantId || !availableDateRange) return;
       
       // Define timeRange inside the function to ensure it's using current values
@@ -90,7 +101,7 @@ export function Dashboard() {
       if (Object.keys(deviceData).length > 0) {
         fetchComparisons();
       }
-    }, [deviceData, currentDate, viewType]);
+    }, [deviceData, currentDate, viewType]); */
 
     const handleCategoryClick = (category: string) => {
       setSelectedCategory(category);
@@ -389,6 +400,7 @@ export function Dashboard() {
               onCategoryClick={handleCategoryClick}
               getCategoryColor={getCategoryColor}
               comparisonData={comparisonData}
+              viewType={viewType}
             />
           ) : (
             // Device View
@@ -396,6 +408,8 @@ export function Dashboard() {
               data={data}
               deviceData={deviceData}
               selectedCategory={selectedCategory}
+              participantId={participantId}
+              viewType={viewType}
             />
           )}
 
@@ -426,10 +440,12 @@ export function Dashboard() {
           />
 
           {/* Social Comparison Section */}
+          {/*}
           <SocialComparison 
             comparisons={comparisons}
             viewType={viewType}
           />
+          */}
         </div>
       </div>
     );

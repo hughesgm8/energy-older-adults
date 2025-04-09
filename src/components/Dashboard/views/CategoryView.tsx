@@ -15,6 +15,7 @@ interface CategoryViewProps {
     average: number;
     percentChange: number;
   }>;
+  viewType?: 'day' | 'week';
 }
 
 export const CategoryView: React.FC<CategoryViewProps> = ({
@@ -22,7 +23,8 @@ export const CategoryView: React.FC<CategoryViewProps> = ({
   deviceData,
   onCategoryClick,
   getCategoryColor,
-  comparisonData = {}
+  comparisonData = {},
+  viewType = 'day'
 }) => {
   // Get all unique categories
   const categories = [...new Set(Object.values(deviceData).map(device => 
@@ -81,29 +83,43 @@ export const CategoryView: React.FC<CategoryViewProps> = ({
                 <p className="text-sm text-muted-foreground">
                   {category.deviceCount} {category.deviceCount === 1 ? 'device' : 'devices'}
                 </p>
-                <div className="flex justify-between items-center">
-                  <p className="text-lg font-medium">
-                    {category.value.toFixed(2)} kW
-                  </p>
-                  
-                  {/* Comparison indicator */}
-                  {category.comparison && (
-                    <div className={`flex items-center text-sm ${
-                      category.comparison.percentChange > 0 
-                        ? 'text-red-500' 
-                        : category.comparison.percentChange < 0 
-                          ? 'text-green-500' 
-                          : 'text-gray-500'
-                    }`}>
-                      {category.comparison.percentChange > 0 ? (
-                        <TrendingUp className="w-4 h-4 mr-1" />
-                      ) : category.comparison.percentChange < 0 ? (
-                        <TrendingDown className="w-4 h-4 mr-1" />
-                      ) : null}
-                      {Math.abs(category.comparison.percentChange)}% vs. avg
+                <p className="text-lg font-medium">
+                  {category.value.toFixed(2)} kW
+                </p>
+                
+                {/* Historical comparison section - matching DeviceView style */}
+                {viewType === 'week' && category.comparison && (
+                  <div className="pt-2 border-t mt-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Compared to average:</span>
+                      <div className={`flex items-center gap-1 ${
+                        category.comparison.percentChange < 0 
+                          ? 'text-green-600' 
+                          : category.comparison.percentChange > 0 
+                            ? 'text-red-600' 
+                            : 'text-gray-500'
+                      }`}>
+                        {category.comparison.percentChange < 0 ? (
+                          <TrendingDown className="w-4 h-4" />
+                        ) : category.comparison.percentChange > 0 ? (
+                          <TrendingUp className="w-4 h-4" />
+                        ) : null}
+                        <span className="text-sm font-semibold">
+                          {category.comparison.percentChange > 0 ? '+' : ''}
+                          {category.comparison.percentChange}%
+                        </span>
+                      </div>
                     </div>
-                  )}
-                </div>
+                    <div className="grid grid-cols-2 gap-2 mt-1 text-xs text-muted-foreground">
+                      <div>
+                        <p>Current: {category.comparison.current.toFixed(1)} kWh</p>
+                      </div>
+                      <div>
+                        <p>Average: {category.comparison.average.toFixed(1)} kWh</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

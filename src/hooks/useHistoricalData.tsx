@@ -10,6 +10,11 @@ export interface CategoryAveragesResult {
     average: number;
     percentChange: number;
   }>;
+  deviceComparisonData: Record<string, {
+    current: number;
+    average: number;
+    percentChange: number;
+  }>;
   isLoading: boolean;
   error: string | null;
 }
@@ -22,6 +27,11 @@ export const useHistoricalData = (
 ): CategoryAveragesResult => {
   const [averages, setAverages] = useState<Record<string, number>>({});
   const [comparisonData, setComparisonData] = useState<Record<string, {
+    current: number;
+    average: number;
+    percentChange: number;
+  }>>({});
+  const [deviceComparisonData, setDeviceComparisonData] = useState<Record<string, {
     current: number;
     average: number;
     percentChange: number;
@@ -54,7 +64,6 @@ export const useHistoricalData = (
     return period;
   }, [viewType]); // Only recalculate when viewType changes
 
-  // Move calculation function outside useEffect and memoize it
   const calculateHistoricalAverages = useCallback(async () => {
     if (!participantId || Object.keys(deviceData).length === 0) {
       setIsLoading(false);
@@ -64,24 +73,23 @@ export const useHistoricalData = (
     try {
       setIsLoading(true);
 
-      // Get current data by category
+      // Get current data by category and device
       const currentCategoryTotals: Record<string, number> = {};
+      const currentDeviceTotals: Record<string, number> = {};
       
-      // Process current data to get category totals
-      // We need to process each device reading and organize by category
+      // Process current data to get category and device totals
       currentData.forEach(reading => {
-        // Process each device in the reading
         Object.entries(reading).forEach(([key, value]) => {
-          // Skip the timestamp key
-          if (key === 'timestamp') return;
+          if (key === 'timestamp' || typeof value !== 'number') return;
           
-          // Skip if value isn't a number
-          if (typeof value !== 'number') return;
+          // Track by device
+          if (!currentDeviceTotals[key]) {
+            currentDeviceTotals[key] = 0;
+          }
+          currentDeviceTotals[key] += value;
           
-          // Get device category for this device name
+          // Track by category
           const category = deviceCategorizationService.getDeviceCategory(key);
-          
-          // Initialize or add to category total
           if (!currentCategoryTotals[category]) {
             currentCategoryTotals[category] = 0;
           }
@@ -89,10 +97,11 @@ export const useHistoricalData = (
         });
       });
 
-      // Historical calculation would ideally come from an API
-      // For now, let's create a simple mock calculation from the device data
+      // Historical calculation preparation
       const categoryCounts: Record<string, number> = {};
       const categoryHistoricalTotals: Record<string, number> = {};
+      const deviceCounts: Record<string, number> = {};
+      const deviceHistoricalTotals: Record<string, number> = {};
       
       // Process all available data in deviceData
       Object.entries(deviceData).forEach(([deviceKey, device]) => {
@@ -101,46 +110,63 @@ export const useHistoricalData = (
         const deviceName = device.name.toLowerCase().replace(/\s+/g, '_');
         const category = deviceCategorizationService.getDeviceCategory(device.name);
         
+        // Initialize tracking for this category and device
         if (!categoryCounts[category]) {
           categoryCounts[category] = 0;
           categoryHistoricalTotals[category] = 0;
+        }
+        
+        if (!deviceCounts[deviceName]) {
+          deviceCounts[deviceName] = 0;
+          deviceHistoricalTotals[deviceName] = 0;
         }
         
         // Process each data point
         device.hourly.data.forEach((value, index) => {
           if (typeof value !== 'number') return;
           
-          // Check if this reading is within the current period using the memoized currentPeriod
+          // Check if this reading is within the current period
           const timestamp = new Date(device.hourly.timestamps![index]);
           const isCurrentPeriod = timestamp >= currentPeriod.start && timestamp <= currentPeriod.end;
           
           // Only include in historical if not in current period
           if (!isCurrentPeriod) {
+            // Add to category totals
             categoryHistoricalTotals[category] += value;
             categoryCounts[category]++;
+            
+            // Add to device totals
+            deviceHistoricalTotals[deviceName] += value;
+            deviceCounts[deviceName]++;
           }
         });
       });
       
-      // Calculate the average
+      // Calculate category averages
       const calculatedAverages: Record<string, number> = {};
       Object.keys(categoryHistoricalTotals).forEach(category => {
-        // When using 30 days:
-        // For day view, we want average per day
-        // For week view, we want average per week
         if (viewType === 'day') {
-          // Calculate daily average from all historical data except current day
           const totalDays = 30 - 1; // Subtract 1 for current day
           calculatedAverages[category] = categoryHistoricalTotals[category] / totalDays;
         } else {
-          // Calculate weekly average - assuming 4 weeks of data 
-          // And excluding current week
           const totalWeeks = (30 / 7) - 1; // ~4 weeks minus current week
           calculatedAverages[category] = categoryHistoricalTotals[category] / totalWeeks;
         }
       });
 
-      // Calculate comparison data
+      // Calculate device-level averages
+      const deviceAverages: Record<string, number> = {};
+      Object.keys(deviceHistoricalTotals).forEach(deviceName => {
+        if (viewType === 'day') {
+          const totalDays = 30 - 1;
+          deviceAverages[deviceName] = deviceHistoricalTotals[deviceName] / totalDays;
+        } else {
+          const totalWeeks = (30 / 7) - 1;
+          deviceAverages[deviceName] = deviceHistoricalTotals[deviceName] / totalWeeks;
+        }
+      });
+
+      // Calculate comparison data for categories
       const calculatedComparisonData: Record<string, {
         current: number;
         average: number;
@@ -162,20 +188,43 @@ export const useHistoricalData = (
         };
       });
       
+      // Calculate comparison data for individual devices
+      const calculatedDeviceComparisonData: Record<string, {
+        current: number;
+        average: number;
+        percentChange: number;
+      }> = {};
+
+      Object.keys(currentDeviceTotals).forEach(deviceName => {
+        const currentValue = currentDeviceTotals[deviceName] || 0;
+        const averageValue = deviceAverages[deviceName] || 0;
+        
+        const percentChange = averageValue > 0 
+          ? ((currentValue - averageValue) / averageValue) * 100
+          : 0;
+          
+        calculatedDeviceComparisonData[deviceName] = {
+          current: currentValue,
+          average: averageValue,
+          percentChange: Math.round(percentChange)
+        };
+      });
+      
       setAverages(calculatedAverages);
       setComparisonData(calculatedComparisonData);
+      setDeviceComparisonData(calculatedDeviceComparisonData);
       setIsLoading(false);
     } catch (err) {
       console.error('Error calculating historical averages:', err);
       setError('Failed to calculate historical data');
       setIsLoading(false);
     }
-  }, [participantId, deviceData, currentData, viewType, currentPeriod]); // Include currentPeriod in dependencies
+  }, [participantId, deviceData, currentData, viewType, currentPeriod]);
 
   // Simplified useEffect that just calls the memoized function
   useEffect(() => {
     calculateHistoricalAverages();
-  }, [calculateHistoricalAverages]); // This will only trigger when calculateHistoricalAverages changes
+  }, [calculateHistoricalAverages]);
 
-  return { averages, comparisonData, isLoading, error };
+  return { averages, comparisonData, deviceComparisonData, isLoading, error };
 };
