@@ -12,6 +12,7 @@ import { CategoryView } from './views/CategoryView';
 import { DeviceView } from './views/DeviceView';
 import { CostInsights } from './CostInsights/CostInsights';
 import { useHistoricalData } from '../../hooks/useHistoricalData';
+import { UsageSummary } from './UsageSummary/UsageSummary';
 
 /* SOCIAL COMPARISON FEATURE
 This feature is temporarily disabled due to lack of realistic comparison data. 
@@ -391,61 +392,85 @@ export function Dashboard() {
             {data.length === 0 && " (No data available for this period)"}
           </div>
 
-          {/* Dynamic Content - Either Categories or Devices */}
-          {selectedCategory === null ? (
-            // Category View Component
-            <CategoryView 
+          {/* Section 1: Usage Summary */}
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-4 text-gray-800">
+              {selectedCategory !== null ? `Current Usage: ${selectedCategory}` : 'Current Usage'}
+            </h2>
+            
+            {/* Overall Usage Summary */}
+            <UsageSummary
               data={data}
               deviceData={deviceData}
-              onCategoryClick={handleCategoryClick}
-              getCategoryColor={getCategoryColor}
+              viewType={viewType}
               comparisonData={comparisonData}
-              viewType={viewType}
             />
-          ) : (
-            // Device View
-            <DeviceView 
+
+            {/* Cost disclaimer */}
+            <p className="text-xs text-muted-foreground mt-2 text-center sm:text-left">
+              These are estimates based on the standard UK electricity price cap. Source: Ofgem
+            </p>
+            
+            {/* Dynamic Content - Either Categories or Devices */}
+            <div className="mt-6">
+            <h3 className="text-lg font-medium mb-3">
+              {selectedCategory === null ? 'Breakdown by Category' : 'Breakdown by Device'}
+            </h3>
+              {selectedCategory === null ? (
+                // Category View with cost display
+                <CategoryView 
+                  data={data}
+                  deviceData={deviceData}
+                  onCategoryClick={handleCategoryClick}
+                  getCategoryColor={getCategoryColor}
+                  comparisonData={comparisonData}
+                  viewType={viewType}
+                  showCost={true} 
+                />
+              ) : (
+                // Device View with cost display
+                <DeviceView 
+                  data={data}
+                  deviceData={deviceData}
+                  selectedCategory={selectedCategory}
+                  participantId={participantId}
+                  viewType={viewType}
+                  showCost={true} 
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Section 2: Comparative Insights - Reimagined */}
+          <div>
+            <h2 className="text-xl font-semibold mb-4 text-gray-800">Usage Patterns & Trends</h2>
+            
+            {/* Chart Card - Shows patterns over time */}
+            <Card className="shadow mb-6">
+              <CardContent className="pt-6">
+                <EnergyChart 
+                  data={data}
+                  deviceData={deviceData}
+                  viewType={viewType}
+                  viewLevel={selectedCategory === null ? 'category' : 'device'}
+                  selectedCategory={selectedCategory}
+                  isMobile={isMobile}
+                  getUniqueDeviceColor={getUniqueDeviceColor}
+                  getCategoryColor={getCategoryColor}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Only show detailed cost insights if we're not already showing costs in categories */}
+            <CostInsights 
               data={data}
               deviceData={deviceData}
-              selectedCategory={selectedCategory}
-              participantId={participantId}
+              previousWeekData={previousWeekData}
               viewType={viewType}
+              viewLevel={selectedCategory === null ? 'category' : 'device'}
+              selectedCategory={selectedCategory}
             />
-          )}
-
-          {/* Chart Card */}
-          <Card className="shadow">
-            <CardContent className="pt-6">
-                <EnergyChart 
-                data={data}
-                deviceData={deviceData}
-                viewType={viewType}
-                viewLevel={selectedCategory === null ? 'category' : 'device'}
-                selectedCategory={selectedCategory}
-                isMobile={isMobile}
-                getUniqueDeviceColor={getUniqueDeviceColor}
-                getCategoryColor={getCategoryColor}
-                />
-            </CardContent>
-          </Card>
-
-          {/* Cost Insights Section */}
-          <CostInsights 
-            data={data}
-            deviceData={deviceData}
-            previousWeekData={previousWeekData}
-            viewType={viewType}
-            viewLevel={selectedCategory === null ? 'category' : 'device'}
-            selectedCategory={selectedCategory}
-          />
-
-          {/* Social Comparison Section */}
-          {/*}
-          <SocialComparison 
-            comparisons={comparisons}
-            viewType={viewType}
-          />
-          */}
+          </div>
         </div>
       </div>
     );

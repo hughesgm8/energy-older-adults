@@ -164,7 +164,7 @@ export const EnergyChart: React.FC<EnergyChartProps> = ({
     });
 
     return (
-      <div className="h-60 sm:h-80">
+      <div className="h-84 sm:h-108">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={categoryData}
@@ -191,7 +191,6 @@ export const EnergyChart: React.FC<EnergyChartProps> = ({
               formatter={(value: number) => [`${value.toFixed(3)} kW`]}
               contentStyle={{ fontSize: '0.875rem' }}
             />
-            <Legend />
             <Bar 
               dataKey="value" 
               name="Energy Usage">
@@ -212,7 +211,7 @@ export const EnergyChart: React.FC<EnergyChartProps> = ({
 
   // Otherwise render device view chart
   return (
-    <div className="h-60 sm:h-80">
+    <div className="h-84 sm:h-108">
       <ResponsiveContainer width="100%" height="100%">
         {viewType === 'day' ? (
           // Day view - Line chart
@@ -268,8 +267,11 @@ export const EnergyChart: React.FC<EnergyChartProps> = ({
             />
             <Legend 
               verticalAlign="top" 
-              height={30}
-              wrapperStyle={{ fontSize: '0.75rem' }}
+              height={48}
+              wrapperStyle={{ 
+                fontSize: '0.75rem',
+                paddingBottom: '20px' 
+              }}
             />
             
             {/* Filter devices by selected category if needed */}
@@ -356,8 +358,11 @@ export const EnergyChart: React.FC<EnergyChartProps> = ({
             />
             <Legend 
               verticalAlign="top" 
-              height={30}
-              wrapperStyle={{ fontSize: '0.75rem' }}
+              height={48}
+              wrapperStyle={{ 
+                fontSize: '0.75rem',
+                paddingBottom: '20px'
+              }}
             />
             
             {/* Filter devices by selected category if needed */}

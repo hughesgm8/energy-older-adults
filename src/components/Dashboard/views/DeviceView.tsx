@@ -1,10 +1,11 @@
-import React from 'react';
+import {useState} from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Activity, TrendingDown, TrendingUp } from 'lucide-react';
+import { Activity, TrendingDown, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 import { deviceCategorizationService } from '@/services/DeviceCategorizationService';
 import { DeviceDataResponse, DeviceReading } from '@/types/device';
 import { ViewType } from '@/types/views';
 import { useHistoricalData } from '@/hooks/useHistoricalData';
+import { CostEstimationService } from '@/services/CostEstimationService';
 
 interface DeviceViewProps {
   deviceData: DeviceDataResponse;
@@ -12,6 +13,7 @@ interface DeviceViewProps {
   selectedCategory: string | null;
   participantId?: string;
   viewType: ViewType;
+  showCost?: boolean;
 }
 
 export function DeviceView({ 
@@ -19,7 +21,8 @@ export function DeviceView({
   data, 
   selectedCategory,
   participantId,
-  viewType 
+  viewType ,
+  showCost = true
 }: DeviceViewProps) {
   // Fetch historical comparison data
   const { deviceComparisonData, isLoading } = useHistoricalData(
@@ -28,6 +31,15 @@ export function DeviceView({
     data,
     viewType
   );
+
+  const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
+
+  const toggleExpand = (deviceKey: string) => {
+    setExpandedCards(prev => ({
+      ...prev,
+      [deviceKey]: !prev[deviceKey]
+    }));
+  };
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -41,77 +53,103 @@ export function DeviceView({
           const deviceName = device.name.toLowerCase().replace(/\s+/g, '_');
           const comparisonInfo = deviceComparisonData[deviceName];
           
+          // Calculate total energy for this device
+          const totalEnergy = data.reduce((sum, reading) => {
+            return sum + (typeof reading[deviceName] === 'number' ? reading[deviceName] : 0);
+          }, 0);
+          
+          // Calculate cost if showCost is true
+          const totalCost = showCost ? CostEstimationService.estimateCost(totalEnergy) : 0;
+          
           return (
             <Card key={deviceKey} className="shadow-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                  <Activity className="w-5 h-5" />
-                  {device.name}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    {deviceCategorizationService.getDeviceCategory(device.name)}
-                  </p>
-                  <p className="text-lg font-medium">
-                    {(() => {
-                      if (!data || data.length === 0) {
-                        return 'No active data for this period';
-                      }
-                      
-                      try {
-                        const deviceName = device.name.toLowerCase().replace(/\s+/g, '_');
-                        const totalEnergy = data.reduce((sum, reading) => {
-                          return sum + (typeof reading[deviceName] === 'number' ? reading[deviceName] : 0);
-                        }, 0);
-                        
-                        const activeHours = data.filter(reading => {
-                          const value = reading[deviceName];
-                          return typeof value === 'number' && value > 0;
-                        }).length;
-                        
-                        return `${activeHours} hours of use`;
-                      } catch (error) {
-                        return 'Data unavailable';
-                      }
-                    })()}
-                  </p>
-                  
-                  {/* Historical comparison section */}
-                  {viewType === 'week' && comparisonInfo && (
-                    <div className="pt-2 border-t">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Compared to average:</span>
-                        <div className={`flex items-center gap-1 ${
-                          comparisonInfo.percentChange < 0 
-                            ? 'text-green-600' 
-                            : comparisonInfo.percentChange > 0 
-                              ? 'text-red-600' 
-                              : 'text-gray-500'
-                        }`}>
-                          {comparisonInfo.percentChange < 0 ? (
-                            <TrendingDown className="w-4 h-4" />
-                          ) : comparisonInfo.percentChange > 0 ? (
-                            <TrendingUp className="w-4 h-4" />
-                          ) : null}
-                          <span className="text-sm font-semibold">
-                            {comparisonInfo.percentChange > 0 ? '+' : ''}
-                            {comparisonInfo.percentChange}%
-                          </span>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 mt-1 text-xs text-muted-foreground">
-                        <div>
-                          <p>Current: {comparisonInfo.current.toFixed(1)} kWh</p>
-                        </div>
-                        <div>
-                          <p>Average: {comparisonInfo.average.toFixed(1)} kWh</p>
-                        </div>
-                      </div>
+              <CardContent className="p-4">
+                {/* Primary information always visible */}
+                <div className="flex justify-between items-center mb-2">
+                  <div className="flex items-center gap-2">
+                    <Activity className="w-5 h-5" />
+                    <h3 className="font-medium">{device.name}</h3>
+                  </div>
+                  <button 
+                    onClick={() => toggleExpand(deviceKey)}
+                    className="text-gray-400 hover:text-gray-600"
+                    aria-label={expandedCards[deviceKey] ? "Show less" : "Show more"}
+                  >
+                    {expandedCards[deviceKey] ? (
+                      <ChevronUp className="w-5 h-5" />
+                    ) : (
+                      <ChevronDown className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
+                
+                {/* Essential metrics always visible */}
+                <div className="flex justify-between items-baseline">
+                  <div>
+                    <p className="text-xl font-semibold">{totalEnergy.toFixed(1)} kWh</p>
+                  </div>
+                  {showCost && (
+                    <div>
+                      <p className="text-base font-medium">£{totalCost.toFixed(2)}</p>
                     </div>
                   )}
                 </div>
+                
+                {/* Comparison indicator also always visible */}
+                {viewType === 'week' && comparisonInfo && (
+                  <div className={`mt-2 text-sm flex items-center ${
+                    comparisonInfo.percentChange < 0 
+                      ? 'text-green-600' 
+                      : comparisonInfo.percentChange > 0 
+                        ? 'text-red-600' 
+                        : 'text-gray-500'
+                  }`}>
+                    {comparisonInfo.percentChange < 0 ? (
+                      <TrendingDown className="w-3 h-3 mr-1" />
+                    ) : (
+                      <TrendingUp className="w-3 h-3 mr-1" />
+                    )}
+                    <span>{Math.abs(comparisonInfo.percentChange).toFixed(1)}% than average</span>
+                  </div>
+                )}
+                
+                {/* Additional details when expanded */}
+                {expandedCards[deviceKey] && (
+                  <div className="mt-3 pt-3 border-t space-y-2 text-sm text-gray-500">
+                    <div className="flex justify-between">
+                      <span>Category:</span>
+                      <span className="font-medium text-gray-700">{deviceCategorizationService.getDeviceCategory(device.name)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Hours active:</span>
+                      <span className="font-medium text-gray-700">
+                        {(() => {
+                          if (!data || data.length === 0) return 'None';
+                          try {
+                            return data.filter(reading => {
+                              const value = reading[deviceName];
+                              return typeof value === 'number' && value > 0;
+                            }).length + ' hours';
+                          } catch {
+                            return 'N/A';
+                          }
+                        })()}
+                      </span>
+                    </div>
+                    {comparisonInfo && (
+                      <>
+                        <div className="flex justify-between">
+                          <span>Current usage:</span>
+                          <span className="font-medium text-gray-700">{comparisonInfo.current.toFixed(1)} kWh</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Average usage:</span>
+                          <span className="font-medium text-gray-700">{comparisonInfo.average.toFixed(1)} kWh</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           );
