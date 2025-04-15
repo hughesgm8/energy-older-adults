@@ -9,8 +9,6 @@ interface ViewControlsProps {
   onViewTypeChange: (viewType: ViewType) => void;
   onNavigate: (direction: 'prev' | 'next') => void;
   currentDate: Date;
-  selectedCategory?: string | null;
-  onBackToCategories?: () => void;
 }
 
 function formatDateRange(date: Date, viewType: ViewType) {
@@ -47,77 +45,51 @@ export function ViewControls({
   onViewTypeChange,
   onNavigate,
   currentDate,
-  selectedCategory = null,
-  onBackToCategories
 }: ViewControlsProps) {
+
   return (
-    <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm shadow-sm border-b">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-2">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          {/* Left side: Breadcrumbs or nothing */}
-          <div className="flex items-center">
-            {selectedCategory && onBackToCategories ? (
-              <div className="flex items-center">
-                <Button 
-                  variant="ghost" 
-                  onClick={onBackToCategories}
-                  className="flex items-center gap-1 text-sm h-8 px-2 -ml-2"
-                  size="sm"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="15 18 9 12 15 6"></polyline>
-                  </svg>
-                  Home
-                </Button>
-                <span className="mx-1 text-gray-500">›</span>
-                <span className="text-sm font-medium">{selectedCategory}</span>
-              </div>
-            ) : (
-              <span className="text-sm font-medium text-muted-foreground">Home</span>
-            )}
+    <div className="sticky top-16 z-10 flex justify-center mt-2 mb-4">
+      <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full 
+        bg-primary-100 border border-primary-300 shadow-lg backdrop-blur-sm
+        hover:shadow-xl transition-shadow duration-300">
+        <Select value={viewType} onValueChange={(value: ViewType) => onViewTypeChange(value)}>
+          <SelectTrigger className="w-[80px] sm:w-[120px] h-8 border-0 bg-transparent focus:ring-0 focus:ring-offset-0 shadow-none px-2 font-medium text-primary-700">
+            <div className="flex items-center gap-2 overflow-hidden">
+              <SelectValue placeholder="View" className="truncate" />
+            </div>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="day">Day</SelectItem>
+            <SelectItem value="week">Week</SelectItem>
+          </SelectContent>
+        </Select>
+        
+        <div className="flex items-center h-8 border-l border-primary-300 pl-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onNavigate('prev')}
+            aria-label="Previous Day"
+            title={`Previous ${viewType === 'day' ? 'Day' : 'Week'}`}
+            className="h-8 w-8 rounded-full hover:bg-primary-200 hover:text-primary-800 text-primary-700"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          
+          <div className="text-sm font-medium min-w-24 text-center px-1 text-primary-900">
+            {formatDateRange(currentDate, viewType)}
           </div>
           
-          {/* Right side: View controls and date navigation */}
-          <div className="flex items-center gap-2">
-            {/* Date Period Selector */}
-            <Select value={viewType} onValueChange={(value: ViewType) => onViewTypeChange(value)}>
-              <SelectTrigger className="w-[120px] h-8">
-                <div className="flex items-center gap-2 overflow-hidden">
-                  <Calendar className="h-4 w-4 flex-shrink-0" />
-                  <SelectValue placeholder="View" className="truncate" />
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="day">Day</SelectItem>
-                <SelectItem value="week">Week</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            {/* Date Navigation */}
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => onNavigate('prev')}
-              aria-label="Previous"
-              className="h-8 w-8"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            
-            <div className="text-sm font-medium min-w-24 text-center">
-              {formatDateRange(currentDate, viewType)}
-            </div>
-            
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => onNavigate('next')}
-              aria-label="Next"
-              className="h-8 w-8"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onNavigate('next')}
+            aria-label="Next Day"
+            title={`Next ${viewType === 'day' ? 'Day' : 'Week'}`}
+            className="h-8 w-8 rounded-full hover:bg-primary-200 hover:text-primary-800 text-primary-700"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
       </div>
     </div>

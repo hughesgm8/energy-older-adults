@@ -140,6 +140,89 @@ export const EnergyChart: React.FC<EnergyChartProps> = ({
     setDeviceColors(colors);
   }, [deviceData, selectedCategory, viewLevel, getUniqueDeviceColor]);
 
+  const processDataForTimeBlocks = (
+    data: DeviceReading[],
+    deviceData: DeviceDataResponse,
+    selectedCategory: string | null
+  ) => {
+    // Define time blocks
+    const timeBlocks = [
+      { name: 'Morning', start: 5, end: 11 },   // 5am-12pm
+      { name: 'Afternoon', start: 12, end: 16 }, // 12pm-5pm
+      { name: 'Evening', start: 17, end: 21 },  // 5pm-10pm
+      { name: 'Night', start: 22, end: 4 }      // 10pm-5am
+    ];
+    
+    // Define the type for our result objects
+    type TimeBlockResult = {
+      timeBlock: string;
+      total: number;
+      [key: string]: string | number; // Allow for dynamic device keys
+    };
+    
+    // Initialize result structure
+    const result = timeBlocks.map(block => {
+      // Start with the base properties
+      const blockData: TimeBlockResult = {
+        timeBlock: block.name,
+        total: 0
+      };
+      
+      // Add device-specific properties
+      Object.entries(deviceData)
+        .filter(([_, device]) => {
+          if (!selectedCategory) return true;
+          const category = deviceCategorizationService.getDeviceCategory(device.name);
+          return category === selectedCategory;
+        })
+        .forEach(([_, device]) => {
+          const deviceName = device.name.toLowerCase().replace(/\s+/g, '_');
+          blockData[`${deviceName}_energy`] = 0;
+        });
+      
+      return blockData;
+    });
+    
+    // Process data
+    data.forEach(reading => {
+      const hour = new Date(reading.timestamp).getHours();
+      
+      // Find which time block this hour belongs to
+      const timeBlockIndex = timeBlocks.findIndex(block => {
+        if (block.start <= block.end) {
+          // Regular case (e.g., 5-11)
+          return hour >= block.start && hour <= block.end;
+        } else {
+          // Overnight case (e.g., 22-4)
+          return hour >= block.start || hour <= block.end;
+        }
+      });
+      
+      if (timeBlockIndex === -1) return;
+      
+      // Process each device's reading for this hour
+      Object.entries(deviceData)
+        .filter(([_, device]) => {
+          if (!selectedCategory) return true;
+          const category = deviceCategorizationService.getDeviceCategory(device.name);
+          return category === selectedCategory;
+        })
+        .forEach(([_, device]) => {
+          const deviceName = device.name.toLowerCase().replace(/\s+/g, '_');
+          const value = reading[deviceName];
+          
+          if (typeof value === 'number') {
+            // Now TypeScript knows we can index with string keys
+            const energyKey = `${deviceName}_energy`;
+            result[timeBlockIndex][energyKey] = (result[timeBlockIndex][energyKey] as number || 0) + value;
+            result[timeBlockIndex].total += value;
+          }
+        });
+    });
+    
+    return result;
+  };
+
   if (data.length === 0) {
     return (
       <div className="flex justify-center items-center h-60 sm:h-80">
@@ -164,17 +247,17 @@ export const EnergyChart: React.FC<EnergyChartProps> = ({
     });
 
     return (
-      <div className="h-84 sm:h-108">
+      <div className="h-108 sm:h-132">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={categoryData}
-            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+            margin={{ top: 10, right: 10, left: 10, bottom: 5 }}
           >
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis 
               dataKey="category"
               tick={{ fontSize: 10 }}
-              height={40}
+              height={30}
             />
             <YAxis 
               label={{ 
@@ -185,7 +268,7 @@ export const EnergyChart: React.FC<EnergyChartProps> = ({
                 style: { fontSize: '0.75rem' }
               }}
               tick={{ fontSize: 10 }}
-              width={45}
+              width={40}
             />
             <Tooltip 
               formatter={(value: number) => [`${value.toFixed(3)} kW`]}
@@ -211,100 +294,105 @@ export const EnergyChart: React.FC<EnergyChartProps> = ({
 
   // Otherwise render device view chart
   return (
-    <div className="h-84 sm:h-108">
+    <div className="h-108 sm:h-132">
       <ResponsiveContainer width="100%" height="100%">
-        {viewType === 'day' ? (
-          // Day view - Line chart
-          <LineChart
-            data={data}
-            margin={{ top: 15, right: 10, left: 15, bottom: 20 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis
-              dataKey="timestamp"
-              tickFormatter={(value) => {
-                const date = new Date(value);
-                return `${date.getHours().toString().padStart(2, '0')}:00`;
-              }}
-              label={{ 
-                value: 'Time of Day', 
-                position: 'insideBottom',
-                offset: -10,
-                style: { fontSize: '0.75rem' }
-              }}
-              tick={{ fontSize: 10 }}
-              height={35}
-            />
-            <YAxis 
-              label={{ 
-                value: 'Energy (kW)', 
-                angle: -90, 
-                position: 'insideLeft',
-                offset: -5,
-                style: { fontSize: '0.75rem' }
-              }}
-              tick={{ fontSize: 10 }}
-              width={45}
-            />
-            <Tooltip
-              formatter={(value: number, name: string) => {
-                const deviceInfo = Object.values(deviceData).find(
-                  device => device.name.toLowerCase().replace(/\s+/g, '_') === name
-                );
-                return [`${value.toFixed(3)} kW`, deviceInfo?.name || name];
-              }}
-              labelFormatter={(label) => {
-                const date = new Date(label);
-                return date.toLocaleDateString('en-AU', {
-                  weekday: 'long',
-                  day: '2-digit',
-                  month: 'short',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                });
-              }}
-              contentStyle={{ fontSize: '0.875rem' }}
-            />
-            <Legend 
-              verticalAlign="top" 
-              height={48}
-              wrapperStyle={{ 
-                fontSize: '0.75rem',
-                paddingBottom: '20px' 
-              }}
-            />
-            
-            {/* Filter devices by selected category if needed */}
-            {Object.entries(deviceData)
-              .filter(([_, device]) => {
-                if (!selectedCategory) return true;
-                const category = deviceCategorizationService.getDeviceCategory(device.name);
-                return category === selectedCategory;
-              })
-              .map(([deviceKey, device], index) => {
-                const deviceName = device.name.toLowerCase().replace(/\s+/g, '_');
-                // Use the color from our state, or a default if not yet computed
-                const color = deviceColors[deviceKey] || '#6b7280';
-                
-                return (
-                  <Line
-                    key={deviceKey}
-                    type="monotone"
-                    dataKey={deviceName}
-                    stroke={color}
-                    name={device.name}
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                );
-              })
-            }
-          </LineChart>
-        ) : (
+      {viewType === 'day' ? (
+        // Day view - Grouped Bar Chart by time periods
+        <BarChart
+          data={processDataForTimeBlocks(data, deviceData, selectedCategory)}
+          margin={{ top: 10, right: 0, left: 10, bottom: 10 }}
+          barCategoryGap={isMobile ? 5 : 10}
+        >
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis
+            dataKey="timeBlock"
+            tick={{ fontSize: 10 }}
+            height={35}
+            label={{ 
+              value: 'Time of Day', 
+              position: 'insideBottom',
+              offset: -5,
+              style: { fontSize: '0.75rem' }
+            }}
+          />
+          <YAxis 
+            label={{ 
+              value: 'Energy (kW)', 
+              angle: -90, 
+              position: 'insideLeft',
+              offset: -5,
+              style: { fontSize: '0.75rem' }
+            }}
+            tick={{ fontSize: 10 }}
+            width={40}
+          />
+          <Tooltip
+            formatter={(value: number, name: string) => {
+              if (name === 'total') {
+                return [`${value.toFixed(3)} kW`, "Total Energy"];
+              }
+              const deviceInfo = Object.values(deviceData).find(
+                device => device.name.toLowerCase().replace(/\s+/g, '_') === name.replace('_energy', '')
+              );
+              return [`${value.toFixed(3)} kW`, deviceInfo?.name || name.replace('_energy', '')];
+            }}
+            contentStyle={{ fontSize: '0.875rem' }}
+          />
+          <Legend 
+            verticalAlign="top" 
+            height={70}
+            wrapperStyle={{ 
+              fontSize: '0.75rem',
+              paddingBottom: '25px' 
+            }}
+            formatter={(value) => {
+              if (value === 'total') return "Total Energy";
+              const deviceName = value.replace('_energy', '');
+              const deviceInfo = Object.values(deviceData).find(
+                device => device.name.toLowerCase().replace(/\s+/g, '_') === deviceName
+              );
+              return deviceInfo?.name || deviceName;
+            }}
+          />
+          
+          {/* Bars for each device */}
+          {Object.entries(deviceData)
+            .filter(([_, device]) => {
+              if (!selectedCategory) return true;
+              const category = deviceCategorizationService.getDeviceCategory(device.name);
+              return category === selectedCategory;
+            })
+            .map(([deviceKey, device], index) => {
+              const deviceName = device.name.toLowerCase().replace(/\s+/g, '_');
+              const color = deviceColors[deviceKey] || '#6b7280';
+              
+              return (
+                <Bar
+                  key={deviceKey}
+                  dataKey={`${deviceName}_energy`}
+                  name={deviceName}
+                  fill={color}
+                  barSize={isMobile ? 8 : 15}
+                />
+              );
+            })
+          }
+          
+          {/* Total line */}
+          <Line
+            type="monotone"
+            dataKey="total"
+            name="total"
+            stroke="#696969"
+            strokeWidth={2}
+            dot={{ fill: '#696969', r: 3 }}
+          />
+        </BarChart>
+      ) : (
           // Week view - ComposedChart 
           <ComposedChart
             data={data}
-            margin={{ top: 15, right: 10, left: 15, bottom: 20 }}
+            margin={{ top: 10, right: 5, left: 10, bottom: 10 }}
           >
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis
@@ -319,11 +407,11 @@ export const EnergyChart: React.FC<EnergyChartProps> = ({
               label={{ 
                 value: 'Date', 
                 position: 'insideBottom',
-                offset: -10,
+                offset: -5,
                 style: { fontSize: '0.75rem' }
               }}
               tick={{ fontSize: 10 }}
-              height={35}
+              height={30}
             />
             <YAxis 
               label={{ 
@@ -334,7 +422,7 @@ export const EnergyChart: React.FC<EnergyChartProps> = ({
                 style: { fontSize: '0.75rem' }
               }}
               tick={{ fontSize: 10 }}
-              width={45}
+              width={40}
             />
             <Tooltip
               formatter={(value: number, name: string) => {
@@ -358,10 +446,10 @@ export const EnergyChart: React.FC<EnergyChartProps> = ({
             />
             <Legend 
               verticalAlign="top" 
-              height={48}
+              height={70}
               wrapperStyle={{ 
                 fontSize: '0.75rem',
-                paddingBottom: '20px'
+                paddingBottom: '25px'
               }}
             />
             

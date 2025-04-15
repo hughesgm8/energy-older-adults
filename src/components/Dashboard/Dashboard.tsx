@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ViewControls } from '../ViewControls/ViewControls';
+import { MenuBar } from './MenuBar/MenuBar';
 import { ComparisonResult, participantComparisonService } from '@/services/ParticipantComparisonService';
 import { useDeviceData } from '../../hooks/useDeviceData';
 import { deviceCategorizationService } from '../../services/DeviceCategorizationService';
@@ -351,20 +352,24 @@ export function Dashboard() {
 
     return (
       <div className="min-h-screen bg-background">
-        {/* ViewControls as the first element - top of the page */}
-        <ViewControls
-          viewType={viewType}
-          onViewTypeChange={setViewType}
-          onNavigate={handleNavigate}
-          currentDate={currentDate}
+        {/* MenuBar */}
+        <MenuBar
           selectedCategory={selectedCategory}
           onBackToCategories={handleBackToCategories}
         />
-        
+
         {/* Main content with proper spacing */}
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-1 pb-6">
+          {/* Floating ViewControls */}
+          <ViewControls
+            viewType={viewType}
+            onViewTypeChange={setViewType}
+            onNavigate={handleNavigate}
+            currentDate={currentDate}
+          />
+
           {/* Section 1: Usage Summary */}
-          <div className="mb-8">
+          <div className="mb-6">
             <h2 className="text-xl font-semibold mb-4 text-gray-800">
               {selectedCategory !== null ? `Current Usage: ${selectedCategory}` : 'Current Usage'}
             </h2>
@@ -414,7 +419,7 @@ export function Dashboard() {
 
           {/* Section 2: Comparative Insights - Reimagined */}
           <div>
-            <h2 className="text-xl font-semibold mb-4 text-gray-800">Usage Patterns & Trends</h2>
+            <h2 className="text-xl font-semibold mb-3 text-gray-800">Usage Patterns & Trends</h2>
             
             {/* Chart Card - Shows patterns over time */}
             <Card className="shadow mb-6">
