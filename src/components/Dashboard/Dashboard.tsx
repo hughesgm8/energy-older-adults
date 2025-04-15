@@ -351,47 +351,18 @@ export function Dashboard() {
 
     return (
       <div className="min-h-screen bg-background">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-          {/* View Level Toggle */}
-          <div className="flex justify-between items-center mb-4">
-            <h1 className="text-xl sm:text-2xl font-bold text-center sm:text-left">
-              Your Energy Usage ({participantId})
-            </h1>
-          </div>
-          
-          {/* Breadcrumbs */}
-          {selectedCategory !== null && (
-            <div className="flex items-center mb-4 border-b pb-2">
-              <Button 
-                variant="ghost" 
-                onClick={handleBackToCategories}
-                className="flex items-center gap-1 text-sm"
-                size="sm"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="15 18 9 12 15 6"></polyline>
-                </svg>
-                All Categories
-              </Button>
-              <span className="mx-2">›</span>
-              <span className="font-medium">{selectedCategory}</span>
-            </div>
-          )}
-
-          {/* View Controls */}
-          <ViewControls
-            viewType={viewType}
-            onViewTypeChange={setViewType}
-            onNavigate={handleNavigate}
-            currentDate={currentDate}
-          />
-
-          {/* Date Range Info */}
-          <div className="text-sm text-gray-600 mb-4 text-center sm:text-left">
-            Showing data from {formatDateRange(currentDate, viewType)}
-            {data.length === 0 && " (No data available for this period)"}
-          </div>
-
+        {/* ViewControls as the first element - top of the page */}
+        <ViewControls
+          viewType={viewType}
+          onViewTypeChange={setViewType}
+          onNavigate={handleNavigate}
+          currentDate={currentDate}
+          selectedCategory={selectedCategory}
+          onBackToCategories={handleBackToCategories}
+        />
+        
+        {/* Main content with proper spacing */}
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
           {/* Section 1: Usage Summary */}
           <div className="mb-8">
             <h2 className="text-xl font-semibold mb-4 text-gray-800">
@@ -408,14 +379,14 @@ export function Dashboard() {
 
             {/* Cost disclaimer */}
             <p className="text-xs text-muted-foreground mt-2 text-center sm:text-left">
-              These are estimates based on the standard UK electricity price cap. Source: Ofgem
+              Any costs shown are estimates based on the standard UK electricity price cap. Source: Ofgem
             </p>
             
             {/* Dynamic Content - Either Categories or Devices */}
             <div className="mt-6">
-            <h3 className="text-lg font-medium mb-3">
-              {selectedCategory === null ? 'Breakdown by Category' : 'Breakdown by Device'}
-            </h3>
+              <h3 className="text-lg font-medium mb-3">
+                {selectedCategory === null ? 'Breakdown by Category' : 'Devices'}
+              </h3>
               {selectedCategory === null ? (
                 // Category View with cost display
                 <CategoryView 
