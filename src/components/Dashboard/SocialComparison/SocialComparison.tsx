@@ -2,7 +2,7 @@
  * # SocialComparison Component
  *
  * This component displays energy usage comparisons for a participant's devices.
- * It receives pre-processed comparison data (likely from `ParticipantComparisonService`) and renders a list of charts for each device using `DeviceComparisonChart`.
+ * It receives pre-processed comparison data (from `ParticipantComparisonService`) and renders a list of charts for each device using `DeviceComparisonChart`.
  *
  * ## Key Features
  * - Displays a title and summary of energy usage comparisons.
@@ -42,7 +42,7 @@
  * ```
  *
  * ## Notes
- * - This component does not fetch or process data itself. It relies on the parent component or service to provide the `comparisons` array.
+ * - This component does not fetch or process data itself. It relies on 'ParticipantComparisonService.ts' to provide the `comparisons` array.
  * - If `comparisons` is empty, a message is displayed indicating that no data is available.
  * - Each device's comparison data is passed to `DeviceComparisonChart` for rendering.
  */
