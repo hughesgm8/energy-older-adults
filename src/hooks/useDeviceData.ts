@@ -69,9 +69,13 @@ export function useDeviceData(participantId: string | undefined, currentDate: Da
     
     const dailyData: DeviceReading[] = [];
     const dailyMap: { [dateStr: string]: DeviceReading } = {};
+    const activeHoursMap: { [dateStr: string]: { [deviceKey: string]: number } } = {};
     
     // Extract all device keys (except timestamp)
     const deviceKeys = Object.keys(hourlyData[0]).filter(key => key !== 'timestamp');
+    
+    // Debug
+    console.log('Device keys for aggregation:', deviceKeys);
     
     hourlyData.forEach(reading => {
       const date = new Date(reading.timestamp);
@@ -90,22 +94,46 @@ export function useDeviceData(participantId: string | undefined, currentDate: Da
         });
         
         dailyMap[dateStr] = dailyReading;
+        activeHoursMap[dateStr] = {};
+        deviceKeys.forEach(key => {
+          activeHoursMap[dateStr][key] = 0;
+        });
       }
       
       // Add current hour's values to daily sum
       deviceKeys.forEach(key => {
         if (typeof reading[key] === 'number') {
-          if (typeof dailyMap[dateStr][key] === 'number' && typeof reading[key] === 'number') {
-            dailyMap[dateStr][key] += reading[key];
+          const value = reading[key] as number;
+          
+          // Add to total energy
+          dailyMap[dateStr][key] = (dailyMap[dateStr][key] as number || 0) + value;
+          
+          // Count active hours for any non-zero usage
+          if (value > 0) {
+            activeHoursMap[dateStr][key] = (activeHoursMap[dateStr][key] || 0) + 1;
+            // Debug
+            console.log(`Adding active hour for ${key} on ${dateStr}, value: ${value}, total: ${activeHoursMap[dateStr][key]}`);
           }
         }
       });
     });
     
-    // Convert map to array
-    Object.values(dailyMap).forEach(day => {
+    // Convert map to array and add active hours data
+    Object.entries(dailyMap).forEach(([dateStr, day]) => {
+      // Add active hours data to the reading object
+      deviceKeys.forEach(key => {
+        const activeHoursKey = `${key}_active_hours`;
+        day[activeHoursKey] = activeHoursMap[dateStr][key] || 0;
+        
+        // Debug
+        console.log(`Setting ${activeHoursKey} = ${day[activeHoursKey]} for ${dateStr}`);
+      });
+      
       dailyData.push(day);
     });
+    
+    // Debug the final data
+    console.log('Aggregated daily data with active hours:', dailyData);
     
     // Sort by date
     return dailyData.sort((a, b) => 
@@ -217,7 +245,8 @@ export function useDeviceData(participantId: string | undefined, currentDate: Da
       // For week view, aggregate the hourly data into daily data
       if (viewType === 'week') {
         const aggregatedData = aggregateDataByDay(updatedData);
-        setData(aggregatedData);
+        const processedData = ensureActiveHoursExist(aggregatedData);
+        setData(processedData);
         
         // Process previous week data (only in week view)
         const prevWeekStart = new Date(timeRange.start);
@@ -253,9 +282,11 @@ export function useDeviceData(participantId: string | undefined, currentDate: Da
         // Sort and aggregate previous week data
         prevWeekData.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
         const aggregatedPrevData = aggregateDataByDay(prevWeekData);
-        setPreviousWeekData(aggregatedPrevData);
+        const processedPrevData = ensureActiveHoursExist(aggregatedPrevData);  // Apply the function
+        setPreviousWeekData(processedPrevData);  // Set state with processed data
       } else {
-        setData(updatedData);
+        const processedData = ensureActiveHoursExist(updatedData);  // Apply the function
+        setData(processedData);
         // For day view, clear previous week data
         setPreviousWeekData([]);
       }
@@ -274,6 +305,36 @@ export function useDeviceData(participantId: string | undefined, currentDate: Da
       }
     }
   }, [deviceData]);
+
+  // Process data for active hours if missing
+  const ensureActiveHoursExist = (readings: DeviceReading[]) => {
+    if (!readings || readings.length === 0) return readings;
+    
+    // Get device keys from the first reading
+    const deviceKeys = Object.keys(readings[0]).filter(key => 
+      key !== 'timestamp' && !key.endsWith('_active_hours')
+    );
+    
+    console.log('Ensuring active hours exist for devices:', deviceKeys);
+    
+    // Create a deep copy to avoid modifying the original
+    return readings.map(reading => {
+      const newReading = {...reading};
+      
+      deviceKeys.forEach(key => {
+        const activeHoursKey = `${key}_active_hours`;
+        
+        // Only add if not already present
+        if (typeof newReading[activeHoursKey] !== 'number') {
+          const value = typeof reading[key] === 'number' ? reading[key] : 0;
+          newReading[activeHoursKey] = value > 0 ? 1 : 0;
+          console.log(`Added missing active hours for ${key}: ${newReading[activeHoursKey]}`);
+        }
+      });
+      
+      return newReading;
+    });
+  };
 
   return {
     isLoading,

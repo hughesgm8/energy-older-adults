@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Activity, TrendingDown, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 import { deviceCategorizationService } from '@/services/DeviceCategorizationService';
@@ -24,6 +24,28 @@ export function DeviceView({
   viewType ,
   showCost = true
 }: DeviceViewProps) {
+  // debugging
+  useEffect(() => {
+    // Log the entire data structure to see what's available
+    console.log('DeviceView received data:', data);
+    
+    // Check structure of first reading if available
+    if (data && data.length > 0) {
+      console.log('First reading structure:', data[0]);
+      console.log('First reading keys:', Object.keys(data[0]));
+      
+      // Check device names formatting
+      const deviceNames = Object.entries(deviceData).map(([_, device]) => device.name.toLowerCase().replace(/\s+/g, '_'));
+      console.log('Normalized device names:', deviceNames);
+      
+      // Check if active hours keys exist for any device
+      deviceNames.forEach(name => {
+        const activeHoursKey = `${name}_active_hours`;
+        console.log(`Checking for ${activeHoursKey}:`, data[0][activeHoursKey]);
+      });
+    }
+  }, [data, deviceData]);
+  
   // Fetch historical comparison data
   const { deviceComparisonData, isLoading } = useHistoricalData(
     participantId,
@@ -55,7 +77,9 @@ export function DeviceView({
           
           // Calculate total energy for this device
           const totalEnergy = data.reduce((sum, reading) => {
-            return sum + (typeof reading[deviceName] === 'number' ? reading[deviceName] : 0);
+            const value = typeof reading[deviceName] === 'number' ? reading[deviceName] : 0;
+            // Only add values above a minimal threshold to match the "active hours" calculation
+            return sum + value;
           }, 0);
           
           // Calculate cost if showCost is true
@@ -86,7 +110,9 @@ export function DeviceView({
                 {/* Essential metrics always visible */}
                 <div className="flex justify-between items-baseline">
                   <div>
-                    <p className="text-xl font-semibold">{totalEnergy.toFixed(1)} kWh</p>
+                    <p className="text-xl font-semibold">
+                      {totalEnergy < 0.1 ? totalEnergy.toFixed(2) : totalEnergy.toFixed(1)} kWh
+                    </p>
                   </div>
                   {showCost && (
                     <div>
@@ -125,12 +151,31 @@ export function DeviceView({
                       <span className="font-medium text-gray-700">
                         {(() => {
                           if (!data || data.length === 0) return 'None';
+                          
                           try {
-                            return data.filter(reading => {
-                              const value = reading[deviceName];
-                              return typeof value === 'number' && value > 0;
-                            }).length + ' hours';
-                          } catch {
+                            // First look for pre-calculated active hours
+                            const activeHoursKey = `${deviceName}_active_hours`;
+                            const preCalculatedHours = data.reduce((sum, reading) => {
+                              return sum + (typeof reading[activeHoursKey] === 'number' ? reading[activeHoursKey] : 0);
+                            }, 0);
+                            
+                            // If pre-calculated hours exist and are non-zero, use them
+                            if (preCalculatedHours > 0) {
+                              console.log(`Found pre-calculated hours for ${deviceName}: ${preCalculatedHours}`);
+                              return preCalculatedHours + ' hours';
+                            }
+                            
+                            // Otherwise calculate directly from energy readings
+                            console.log(`Calculating hours directly for ${deviceName}`);
+                            const calculatedHours = data.reduce((count, reading) => {
+                              const value = typeof reading[deviceName] === 'number' ? reading[deviceName] : 0;
+                              return count + (value > 0 ? 1 : 0);
+                            }, 0);
+                            
+                            console.log(`Calculated ${calculatedHours} active hours for ${deviceName}`);
+                            return calculatedHours + ' hours';
+                          } catch (err) {
+                            console.error('Error calculating active hours:', err);
                             return 'N/A';
                           }
                         })()}
@@ -140,11 +185,15 @@ export function DeviceView({
                       <>
                         <div className="flex justify-between">
                           <span>Current usage:</span>
-                          <span className="font-medium text-gray-700">{comparisonInfo.current.toFixed(1)} kWh</span>
+                          <span className="font-medium text-gray-700">
+                            {comparisonInfo.current < 0.1 ? comparisonInfo.current.toFixed(2) : comparisonInfo.current.toFixed(1)} kWh
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span>Average usage:</span>
-                          <span className="font-medium text-gray-700">{comparisonInfo.average.toFixed(1)} kWh</span>
+                          <span className="font-medium text-gray-700">
+                            {comparisonInfo.average < 0.1 ? comparisonInfo.average.toFixed(2) : comparisonInfo.average.toFixed(1)} kWh
+                          </span>
                         </div>
                       </>
                     )}
