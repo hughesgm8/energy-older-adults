@@ -44,33 +44,33 @@ npm run dev
 
 ## Usage
 ### Navigation
-* *Date Navigation*: Use the navigation controls to move between days or weeks.
-* *View Toggle*: Switch between daily and weekly views using the toggle buttons.
+* **Date Navigation**: Use the navigation controls to move between days or weeks.
+* **View Toggle**: Switch between daily and weekly views using the toggle buttons.
 
 ### Viewing Data
-* *Category View*: Click on a category to view devices within that category.
-* *Device View*: View detailed energy usage for individual devices.
+* **Category View**: Click on a category to view devices within that category.
+* **Device View**: View detailed energy usage for individual devices.
 
 ### Insights
-* *Usage Summary*: Provides an overview of energy usage and cost estimates.
-* *Energy Chart*: Visualizes energy usage trends over time.
-* *Cost Insights*: Offers a detailed breakdown of energy costs.
+* **Usage Summary**: Provides an overview of energy usage and cost estimates.
+* **Energy Chart**: Visualizes energy usage trends over time.
+* **Cost Insights**: Offers a detailed breakdown of energy costs.
 
 ## Code Structure
 ### Key Components
-* *Dashboard*: The main component that orchestrates the app's functionality.
-* *CategoryView*: Displays energy usage grouped by categories.
-* *DeviceView*: Shows detailed energy usage for individual devices.
-* *UsageSummary*: Provides an overview of energy usage and costs.
-* *EnergyChart*: Visualizes energy usage trends. Contains all chart components.
-* *CostInsights*: Offers detailed cost breakdowns.
+* **Dashboard**: The main component that orchestrates the app's functionality.
+* **CategoryView**: Displays energy usage grouped by categories.
+* **DeviceView**: Shows detailed energy usage for individual devices.
+* **UsageSummary**: Provides an overview of energy usage and costs.
+* **EnergyChart**: Visualizes energy usage trends. Contains all chart components.
+* **CostInsights**: Offers detailed cost breakdowns.
 
 ### Hooks
-* *useDeviceData*: Fetches and manages device energy data.
-* *useHistoricalData*: Retrieves historical energy usage data for comparisons.
+* **useDeviceData**: Fetches and manages device energy data.
+* **useHistoricalData**: Retrieves historical energy usage data for comparisons.
 
 ### Services
-* *ParticipantComparisonService*: Handles comparisons between participants' energy usage.
+* **ParticipantComparisonService**: Handles comparisons between participants' energy usage.
 
 ## Customization
 ### Adding New Categories
