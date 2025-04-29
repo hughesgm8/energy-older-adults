@@ -1,3 +1,11 @@
+"""
+This script was created to generate fake data based on existing CSV files in the `all-data` directory.
+It requires data to be structured in a specific way, with each participant's / user's data stored in separate folders.
+The data in each .CSV file must also be structured in a specific way, with the first column being the date and time, and the second column being the energy usage.
+The script will copy the data from the P0 folder to P1, P2, and P3 folders, and then modify the energy usage values in the CSV files by multiplying them by a random factor between 0.8 and 1.2.
+The purpose of this fake data was to be used for testing in the Participant Comparison service.
+"""
+
 import os
 import csv
 import random
