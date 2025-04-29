@@ -1,4 +1,35 @@
 // src/services/ParticipantComparisonService.ts
+
+/**
+ * # ParticipantComparisonService
+ *
+ * This service provides methods to fetch and process energy usage data for participants.
+ * It calculates comparisons between the current participant's energy usage and the average usage of other participants.
+ *
+ * ## Key Features
+ * - Fetches data for all participants (real or mock data).
+ * - Calculates total usage, average usage, and percentage differences for each device.
+ * - Supports both mock data (for testing) and real data (via API).
+ *
+ * ## Methods
+ * - `getComparisons`: Fetches and calculates comparison data for a participant.
+ * - `fetchAllParticipantsData`: Fetches real data for all participants from the API.
+ * - `initializeMockData`: Generates mock data for testing purposes.
+ * - `generateMockHourlyData`: Creates realistic mock hourly energy usage data.
+ * - `generateTimestamps`: Generates timestamps for the last week.
+ *
+ * ## Usage
+ * Import the singleton instance `participantComparisonService` and call its methods:
+ * ```typescript
+ * const comparisons = await participantComparisonService.getComparisons(
+ *   currentParticipantId,
+ *   currentDeviceData,
+ *   timeRange,
+ *   viewType
+ * );
+ * ```
+ */
+
 import { DeviceDataResponse } from '../types/device';
 import { TimeRange, ViewType } from '../types/views';
 

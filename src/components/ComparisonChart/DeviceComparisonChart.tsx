@@ -1,15 +1,24 @@
 /*
-* This file is a React component that renders a horizontal bar chart 
-  comparing the user's energy usage with the average usage of other participants.
-
-* The component accepts props for device name, usage values, percentage difference, 
-  and whether the user's usage is lower than average. It also formats the data for the chart.
-  
-* Take note of the inputs to the interface DeviceCOmparisonChartProps
-* It requires averageUsage, which, as it sounds, is the average usage
-   across all participants with the same device,
-   which is computed in SocialComparison.tsx
-*/
+ * # DeviceComparisonChart Component
+ *
+ * This React component renders a horizontal bar chart to compare the user's energy usage 
+ * with the average usage of other participants for a specific device.
+ *
+ * ## Key Features
+ * - Accepts props for device name, usage values, percentage difference, and whether the user's usage 
+ *   is lower than average.
+ * - Formats the data into a structure suitable for rendering with the `recharts` library.
+ * - Displays a textual summary of the comparison, including the percentage difference.
+ * - Uses color coding to indicate whether the user's usage is higher (red) or lower (green) than average.
+ *
+ * ## Data Flow
+ * - The `averageUsage` prop represents the average usage across all participants with the same device.
+ *   This value is computed in `SocialComparison.tsx` and passed down to this component.
+ * - The `viewType` prop determines whether the comparison is for a day or a week.
+ *
+ * ## Usage
+ * This component is typically used within `SocialComparison.tsx` to render a chart for each device.
+ */
 
 import React from 'react';
 import { 
