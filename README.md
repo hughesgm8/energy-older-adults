@@ -86,13 +86,13 @@ Modify the COST_PER_KWH constant in the UsageSummary component to reflect update
 ### Social Comparison Feature
 The app includes a placeholder for a Social Comparison feature, which is currently disabled. To enable it:
 
-1. Uncomment the SocialComparison import and component in the Dashboard file.
-2. Ensure the participantComparisonService is configured with realistic data.
+1. Uncomment the `SocialComparison` import and component in the `Dashboard` file.
+2. Ensure the `participantComparisonService` is configured with realistic data.
 
 ## Troubleshooting
 ### Common Issues
 1. No Device Data Available:
-* Ensure the .env file is correctly configured with device IPs and credentials.
+* Ensure the `.env` file is correctly configured with device IPs and credentials.
 * Verify that the devices are online and accessible.
 2. Error Fetching Data:
 * Check the console for error logs.
