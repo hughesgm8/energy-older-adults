@@ -1,3 +1,59 @@
+/**
+ * # CostInsights Component
+ *
+ * This React component provides insights into the estimated energy costs for devices or categories.
+ * It calculates and displays the total energy cost for the selected time period (day or week) and compares it with the previous week (if applicable).
+ *
+ * ## Key Features
+ * - **Category-Level Insights**: Aggregates energy usage and costs by category (e.g., Entertainment, Kitchen).
+ * - **Device-Level Insights**: Filters and calculates costs for devices within a selected category.
+ * - **Cost Estimation**: Uses `CostEstimationService` to estimate energy costs based on total energy usage.
+ * - **Savings Comparison**: For weekly views, compares the current week's costs with the previous week's costs and highlights savings or overspending.
+ * - **Dynamic Background Colors**: Assigns category-specific background colors for better visual distinction.
+ * - **Fallback Messages**: Displays appropriate messages when no data is available for the selected time period or category.
+ *
+ * ## Props
+ * - `data`: Array of energy usage readings for the current time period.
+ * - `deviceData`: Metadata for devices, including their names and categories.
+ * - `previousWeekData`: Array of energy usage readings for the previous week (used for comparisons).
+ * - `viewType`: Specifies whether the insights are for a "day" or "week" view.
+ * - `viewLevel`: Determines whether the insights are displayed at the "category" or "device" level (default: "category").
+ * - `selectedCategory`: The currently selected category (if any). Filters devices to show only those in the selected category.
+ *
+ * ## Data Flow
+ * - **Category-Level Insights**:
+ *   - Groups devices by category using `deviceCategorizationService`.
+ *   - Aggregates energy usage and calculates total costs for each category.
+ * - **Device-Level Insights**:
+ *   - Filters devices by the selected category and calculates costs for each device.
+ * - **Savings Comparison**:
+ *   - For weekly views, compares the current week's energy usage with the previous week's usage.
+ *   - Highlights savings or overspending using color-coded messages (green for savings, red for overspending).
+ *
+ * ## Usage
+ * ```tsx
+ * <CostInsights
+ *   data={currentData}
+ *   deviceData={deviceMetadata}
+ *   previousWeekData={lastWeekData}
+ *   viewType="week"
+ *   viewLevel="category"
+ *   selectedCategory="Kitchen"
+ * />
+ * ```
+ *
+ * ## Notes
+ * - The component relies on `CostEstimationService` for cost calculations and savings comparisons.
+ * - Background colors for categories are defined in the `getCategoryBgColor` function.
+ * - If no data is available, the component displays fallback messages to inform the user.
+ * - The cost estimates are based on the standard UK electricity price cap (source: Ofgem).
+ *
+ * ## Dependencies
+ * - **CostEstimationService**: Provides methods for estimating energy costs and calculating savings.
+ * - **DeviceCategorizationService**: Categorizes devices and provides category metadata.
+ * - **getDeviceInsights**: Utility function for processing device-level insights.
+ */
+
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { PoundSterlingIcon, ArrowUpIcon, ArrowDownIcon } from 'lucide-react';

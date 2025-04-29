@@ -1,5 +1,68 @@
 // src/services/DeviceCategorizationService.ts
 
+/**
+ * # DeviceCategorizationService
+ *
+ * This service provides methods to categorize devices based on their names, assign them to standardized categories, 
+ * and retrieve additional metadata such as consumption type and energy thresholds. It is used throughout the app 
+ * to ensure consistent categorization and insights for energy usage data.
+ *
+ * ## Key Features
+ * - **Device Categorization**: Categorizes devices into standardized categories such as `Entertainment`, `Lighting`, and `Kitchen`.
+ * - **Thresholds**: Provides default energy consumption thresholds for each category.
+ * - **Consumption Type**: Identifies whether a device has `continuous` or `intermittent` energy usage.
+ * - **Insight Templates**: Generates category-specific insight messages for devices.
+ * - **Fallback Logic**: Attempts to guess the category of unknown devices based on name patterns.
+ *
+ * ## Standard Categories
+ * - `Entertainment`
+ * - `Lighting`
+ * - `Kitchen`
+ * - `Smart Home`
+ * - `Heating & Cooling`
+ * - `Home Office`
+ * - `Unknown`
+ *
+ * ## Methods
+ * - `categorizeDevice(deviceName: string): DeviceInfo`
+ *   - Categorizes a device based on its name and returns detailed metadata, including category, consumption type, and threshold.
+ * - `getDeviceCategory(deviceName: string): StandardCategory`
+ *   - Returns the standardized category for a given device.
+ * - `getThresholdForDevice(deviceName: string): number`
+ *   - Returns the energy consumption threshold for a given device.
+ * - `getConsumptionType(deviceName: string): ConsumptionType`
+ *   - Returns whether the device has `continuous` or `intermittent` energy usage.
+ * - `getInsightTemplate(deviceName: string): string`
+ *   - Returns a pre-defined insight message template for the device's category.
+ *
+ * ## Data Flow
+ * - **Direct Mapping**: Known devices are mapped directly to their categories and metadata using the `deviceMapping` object.
+ * - **Fallback Logic**: For unknown devices, the service attempts to guess the category based on name patterns.
+ * - **Thresholds**: Default thresholds are defined for each category and applied to devices accordingly.
+ *
+ * ## Usage
+ * ```typescript
+ * import { deviceCategorizationService } from '@/services/DeviceCategorizationService';
+ *
+ * const deviceInfo = deviceCategorizationService.categorizeDevice('TV');
+ * console.log(deviceInfo.category); // Output: 'Entertainment'
+ *
+ * const category = deviceCategorizationService.getDeviceCategory('Microwave');
+ * console.log(category); // Output: 'Kitchen'
+ *
+ * const threshold = deviceCategorizationService.getThresholdForDevice('Fridge');
+ * console.log(threshold); // Output: 0.005
+ * ```
+ *
+ * ## Notes
+ * - The `deviceMapping` object contains a predefined list of known devices and their metadata.
+ * - For unknown devices, the `guessDeviceCategory` method uses name patterns to assign a category.
+ * - This service is critical for ensuring consistent categorization and insights across the app.
+ *
+ * ## Dependencies
+ * - **EnergyChart.tsx**: Uses this service to categorize devices and retrieve category-specific colors.
+ */
+
 // Define types for device categorization
 export type ConsumptionType = 'continuous' | 'intermittent';
 

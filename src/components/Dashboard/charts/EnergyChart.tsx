@@ -1,3 +1,62 @@
+/**
+ * # EnergyChart Component
+ *
+ * This React component renders energy usage data as charts, providing both category-level and device-level views.
+ * It supports daily and weekly views, dynamically adjusting the chart type and data processing based on the selected view type and level.
+ *
+ * ## Key Features
+ * - **Category View**: Aggregates energy usage by categories (e.g., Entertainment, Lighting) and displays a bar chart.
+ * - **Device View**: Displays energy usage for individual devices, grouped by time blocks (e.g., Morning, Afternoon) or by date.
+ * - **Dynamic Charting**: Automatically switches between `BarChart` and `ComposedChart` depending on the view type (day or week).
+ * - **Color Coding**: Assigns unique colors to categories and devices for better visual distinction.
+ * - **Responsive Design**: Adapts chart dimensions and bar sizes for mobile and desktop screens.
+ *
+ * ## Props
+ * - `data`: Array of energy usage readings for devices, where each reading includes a timestamp and device-specific values.
+ * - `deviceData`: Object containing metadata for devices, including their names and categories.
+ * - `viewType`: Specifies whether the chart is for a "day" or "week" view.
+ * - `viewLevel`: Determines whether the chart displays data at the "category" or "device" level.
+ * - `selectedCategory`: The currently selected category (if any). Filters devices to show only those in the selected category.
+ * - `isMobile`: Boolean indicating whether the app is being viewed on a mobile device.
+ * - `getUniqueDeviceColor`: Function to generate unique colors for devices within the same category.
+ * - `getCategoryColor`: Function to retrieve the color associated with a specific category.
+ *
+ * ## Data Flow
+ * - **Category View**:
+ *   - Aggregates energy usage data by category using `getCategoryData`.
+ *   - Displays a bar chart where each bar represents a category's total energy usage.
+ * - **Device View**:
+ *   - Groups energy usage data by time blocks (e.g., Morning, Afternoon) for daily views or by date for weekly views.
+ *   - Displays a grouped bar chart for daily views or a composed chart for weekly views.
+ * - **Color Assignment**:
+ *   - Uses `getCategoryColor` for category-level colors.
+ *   - Uses `getUniqueDeviceColor` to generate distinct colors for devices within the same category.
+ *
+ * ## Usage
+ * ```tsx
+ * <EnergyChart
+ *   data={deviceReadings}
+ *   deviceData={deviceMetadata}
+ *   viewType="day"
+ *   viewLevel="device"
+ *   selectedCategory="Entertainment"
+ *   isMobile={false}
+ *   getUniqueDeviceColor={(deviceKey, index) => generateColor(deviceKey, index)}
+ *   getCategoryColor={(category) => categoryColorMap[category]}
+ * />
+ * ```
+ *
+ * ## Notes
+ * - If no data is available, the component displays a fallback message.
+ * - The component dynamically adjusts its layout and chart type based on the `viewType` and `viewLevel` props.
+ * - The `processDataForTimeBlocks` function is used to group energy usage data into time blocks for daily views.
+ * - The `getCategoryData` function aggregates energy usage data by category for category-level views.
+ *
+ * ## Dependencies
+ * - **Recharts**: Used for rendering bar charts, composed charts, and line charts.
+ * - **DeviceCategorizationService**: Provides category information for devices.
+ */
+
 import React, { useEffect, useState } from 'react';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, 
