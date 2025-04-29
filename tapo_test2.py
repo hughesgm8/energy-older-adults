@@ -1,3 +1,8 @@
+'''
+This file was just for testing the Tapo API and is not used in the app.
+Tapo API is from: https://github.com/mihai-dinculescu/tapo
+'''
+
 """P110 and P115 Example"""
 
 import asyncio
