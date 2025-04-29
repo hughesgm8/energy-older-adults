@@ -26,13 +26,19 @@ cd energy-dashboard
 ```
 
 2. Install dependencies:
-`npm install`
+```
+npm install
+```
 
 3. Start API client server (contains APIs required for fetching data):
-`python server.py`
+```
+python server.py
+```
 
 4. Start the development server:
-`npm run dev`
+```
+npm run dev
+```
 
 ## Usage
 ### Navigation
