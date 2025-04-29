@@ -76,11 +76,11 @@ npm run dev
 ### Adding New Categories
 To add a new category:
 
-1. Update the categoryMapping object in the Dashboard component.
-2. Add a corresponding color in the colorMap object.
+1. Update the `categoryMapping` object in the `Dashboard` component.
+2. Add a corresponding color in the `colorMap` object.
 
 ### Adjusting Cost Calculations
-Modify the COST_PER_KWH constant in the UsageSummary component to reflect updated electricity rates.
+Modify the `COST_PER_KWH` constant in the `UsageSummary` component to reflect updated electricity rates.
 
 ## Future Enhancements
 ### Social Comparison Feature
