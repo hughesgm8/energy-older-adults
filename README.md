@@ -1,6 +1,8 @@
 # Energy Usage Dashboard
 The Energy Usage Dashboard is a React + TypeScript application designed to provide users with insights into their energy consumption patterns. It visualizes energy usage data, categorizes devices, and offers comparative insights to help users make informed decisions about their energy usage.
 
+***Note: please make use of Copilot (either on Github or within a code editor like VSCode) to explain parts of each file that may be unclear***
+
 ## Features
 1. Usage Summary
 Displays an overview of energy usage for the selected time period (day or week).
