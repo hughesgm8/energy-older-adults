@@ -1,3 +1,89 @@
+/**
+ * # useDeviceData Hook
+ *
+ * The `useDeviceData` hook is responsible for fetching, processing, and managing energy usage data for devices. 
+ * It provides the current device data, historical data, and utility functions for working with time ranges.
+ *
+ * ## Key Features
+ * - **Data Fetching**:
+ *   - Fetches device data for the current participant from the API or generates mock data for testing.
+ * - **Data Processing**:
+ *   - Aggregates hourly data into daily data for weekly views.
+ *   - Calculates active hours for devices based on energy usage.
+ * - **Time Range Management**:
+ *   - Determines the time range (day or week) for displaying data based on the current date and view type.
+ *   - Provides the available date range for the dataset.
+ * - **Error Handling**:
+ *   - Tracks loading and error states during data fetching and processing.
+ *
+ * ## Parameters
+ * - `participantId: string | undefined`
+ *   - The ID of the participant whose device data is being fetched.
+ * - `currentDate: Date`
+ *   - The currently selected date for which data is being displayed.
+ * - `viewType: ViewType`
+ *   - Specifies whether the data is being viewed by "day" or "week".
+ *
+ * ## Returned Values
+ * - `isLoading: boolean`
+ *   - Indicates whether the data is currently being fetched or processed.
+ * - `error: string | null`
+ *   - Contains an error message if data fetching fails, otherwise `null`.
+ * - `deviceData: DeviceDataResponse`
+ *   - The raw device data fetched from the API or generated as mock data.
+ * - `data: DeviceReading[]`
+ *   - The processed energy usage data for the current time period.
+ * - `previousWeekData: DeviceReading[]`
+ *   - The processed energy usage data for the previous week (only in weekly view).
+ * - `availableDateRange: { start: Date, end: Date } | null`
+ *   - The range of dates for which data is available.
+ * - `getTimeRange: (date: Date, type: ViewType) => TimeRange`
+ *   - A utility function to calculate the start and end dates for the selected time range.
+ *
+ * ## Data Flow
+ * - **Data Fetching**:
+ *   - Fetches device data from the API or generates mock data using `generateMockDeviceData`.
+ * - **Data Processing**:
+ *   - Aggregates hourly data into daily data for weekly views using `aggregateDataByDay`.
+ *   - Calculates active hours for devices and ensures all readings include active hours data.
+ * - **Time Range Management**:
+ *   - Calculates the time range for the current view type (day or week) using `getTimeRange`.
+ *   - Determines the available date range for the dataset using `getDataBoundaries`.
+ *
+ * ## Usage
+ * This hook is typically used in the `Dashboard` component to fetch and process device data:
+ * ```typescript
+ * const {
+ *   isLoading,
+ *   error,
+ *   deviceData,
+ *   data,
+ *   previousWeekData,
+ *   availableDateRange,
+ *   getTimeRange
+ * } = useDeviceData(participantId, currentDate, viewType);
+ * 
+ * if (isLoading) return <LoadingSpinner />;
+ * if (error) return <ErrorMessage message={error} />;
+ * 
+ * return (
+ *   <EnergyChart data={data} />
+ * );
+ * ```
+ *
+ * ## Notes
+ * - The hook uses mock data (`generateMockDeviceData`) for development and testing. To fetch real data, set `useFakeData` to `false`.
+ * - The `aggregateDataByDay` function is used to group hourly data into daily data for weekly views.
+ * - The `ensureActiveHoursExist` function ensures that all readings include active hours data, even if missing from the original dataset.
+ * - The `getTimeRange` function is useful for calculating the start and end dates for the current view type.
+ *
+ * ## Dependencies
+ * - **generateMockDeviceData**: Generates mock device data for testing purposes.
+ * - **DeviceDataResponse**: Type definition for the raw device data structure.
+ * - **DeviceReading**: Type definition for processed energy usage data.
+ * - **ViewType**: Enum defining the possible view types (`"day"` or `"week"`).
+ */
+
 import { useState, useEffect, useMemo } from 'react';
 import { DeviceDataResponse, DeviceReading, TimeRange } from '../types/device';
 import { ViewType } from '../types/views';

@@ -1,3 +1,82 @@
+/**
+ * # useHistoricalData Hook
+ *
+ * The `useHistoricalData` hook is responsible for calculating historical averages and comparisons for energy usage data. 
+ * It processes current and historical data to provide insights at both the category and device levels.
+ *
+ * ## Key Features
+ * - **Historical Averages**:
+ *   - Calculates historical averages for energy usage by category and device.
+ * - **Comparison Data**:
+ *   - Compares current energy usage with historical averages and calculates percentage changes.
+ * - **Time Period Management**:
+ *   - Dynamically determines the current time period (day or week) and excludes it from historical calculations.
+ * - **Error Handling**:
+ *   - Tracks loading and error states during data processing.
+ *
+ * ## Parameters
+ * - `participantId: string | undefined`
+ *   - The ID of the participant whose historical data is being processed.
+ * - `deviceData: DeviceDataResponse`
+ *   - The raw device data, including hourly readings and timestamps.
+ * - `currentData: DeviceReading[]`
+ *   - The processed energy usage data for the current time period.
+ * - `viewType: ViewType`
+ *   - Specifies whether the data is being viewed by "day" or "week".
+ *
+ * ## Returned Values
+ * - `averages: Record<string, number>`
+ *   - Historical averages for each category.
+ * - `comparisonData: Record<string, { current: number; average: number; percentChange: number }>`
+ *   - Comparison data for each category, including current usage, historical average, and percentage change.
+ * - `deviceComparisonData: Record<string, { current: number; average: number; percentChange: number }>`
+ *   - Comparison data for each device, including current usage, historical average, and percentage change.
+ * - `isLoading: boolean`
+ *   - Indicates whether the data is currently being processed.
+ * - `error: string | null`
+ *   - Contains an error message if data processing fails, otherwise `null`.
+ *
+ * ## Data Flow
+ * - **Current Data Processing**:
+ *   - Aggregates current energy usage data by category and device.
+ * - **Historical Data Processing**:
+ *   - Processes historical data from `deviceData` to calculate averages for categories and devices.
+ *   - Excludes the current time period from historical calculations.
+ * - **Comparison Data**:
+ *   - Calculates percentage changes between current usage and historical averages for both categories and devices.
+ *
+ * ## Usage
+ * This hook is typically used in components like `DeviceView` and `CategoryView` to provide historical insights:
+ * ```typescript
+ * const {
+ *   averages,
+ *   comparisonData,
+ *   deviceComparisonData,
+ *   isLoading,
+ *   error
+ * } = useHistoricalData(participantId, deviceData, currentData, viewType);
+ * 
+ * if (isLoading) return <LoadingSpinner />;
+ * if (error) return <ErrorMessage message={error} />;
+ * 
+ * return (
+ *   <CategoryView comparisonData={comparisonData} />
+ * );
+ * ```
+ *
+ * ## Notes
+ * - The hook dynamically calculates the current time period (day or week) using `useMemo` and excludes it from historical averages.
+ * - The `calculateHistoricalAverages` function processes both current and historical data to generate insights.
+ * - The hook uses `useEffect` to trigger calculations whenever the input parameters change.
+ * - The `deviceCategorizationService` is used to group devices by category during data processing.
+ *
+ * ## Dependencies
+ * - **DeviceCategorizationService**: Groups devices by category for historical and current data processing.
+ * - **DeviceDataResponse**: Type definition for the raw device data structure.
+ * - **DeviceReading**: Type definition for processed energy usage data.
+ * - **ViewType**: Enum defining the possible view types (`"day"` or `"week"`).
+ */
+
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { DeviceDataResponse, DeviceReading } from '../types/device';
 import { ViewType } from '../types/views';

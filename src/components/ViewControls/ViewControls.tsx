@@ -1,3 +1,59 @@
+/**
+ * # ViewControls Component
+ *
+ * The `ViewControls` component provides navigation and view-switching functionality for the dashboard. 
+ * It allows users to toggle between "day" and "week" views and navigate through time periods (e.g., previous or next day/week).
+ *
+ * ## Key Features
+ * - **View Type Selector**:
+ *   - Allows users to switch between "day" and "week" views using a dropdown menu.
+ * - **Date Navigation**:
+ *   - Provides buttons to navigate to the previous or next time period (day or week).
+ *   - Displays the current date or date range in a user-friendly format.
+ * - **Responsive Design**:
+ *   - Styled to fit seamlessly into the dashboard's layout, with a sticky position for consistent visibility.
+ *
+ * ## Props
+ * - `viewType: ViewType`
+ *   - The current view type, either `"day"` or `"week"`.
+ * - `onViewTypeChange: (viewType: ViewType) => void`
+ *   - Callback function triggered when the user selects a different view type.
+ * - `onNavigate: (direction: 'prev' | 'next') => void`
+ *   - Callback function triggered when the user clicks the "Previous" or "Next" button.
+ * - `currentDate: Date`
+ *   - The currently selected date, used to display the date or date range.
+ *
+ * ## Data Flow
+ * - **View Type Changes**:
+ *   - When the user selects a new view type (e.g., "day" or "week"), the `onViewTypeChange` callback is triggered to update the state in the parent component.
+ * - **Date Navigation**:
+ *   - Clicking the "Previous" or "Next" button triggers the `onNavigate` callback with the direction (`'prev'` or `'next'`), allowing the parent component to update the `currentDate`.
+ * - **Date Formatting**:
+ *   - The `formatDateRange` function formats the `currentDate` into a readable string, showing either a single date (for "day" view) or a date range (for "week" view).
+ *
+ * ## Usage
+ * This component is typically used in `Dashboard.tsx` to provide navigation and view-switching functionality:
+ * ```tsx
+ * <ViewControls
+ *   viewType={viewType}
+ *   onViewTypeChange={(newViewType) => setViewType(newViewType)}
+ *   onNavigate={(direction) => handleDateNavigation(direction)}
+ *   currentDate={currentDate}
+ * />
+ * ```
+ *
+ * ## Notes
+ * - The `formatDateRange` function ensures that the displayed date or date range is formatted correctly based on the selected view type.
+ * - The component is styled with a sticky position to remain visible as the user scrolls through the dashboard.
+ * - The `lucide-react` library is used for icons (e.g., `ChevronLeft`, `ChevronRight`, `Calendar`).
+ *
+ * ## Dependencies
+ * - **lucide-react**: Provides icons for navigation and view selection.
+ * - **Button**: A reusable button component from the UI library.
+ * - **Select**: A dropdown component for selecting the view type.
+ * - **ViewType**: Enum defining the possible view types (`"day"` or `"week"`).
+ */
+
 import React from 'react';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';

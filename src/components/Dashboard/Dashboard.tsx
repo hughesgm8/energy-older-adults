@@ -1,3 +1,90 @@
+/**
+ * # Dashboard Component
+ *
+ * The `Dashboard` component is the central hub of the Energy Dashboard application. It orchestrates the rendering of 
+ * various views (e.g., category-level, device-level), charts, and insights, while managing state and interactions 
+ * across the application.
+ *
+ * ## Key Features
+ * - **Dynamic Views**:
+ *   - Displays either a category-level view (`CategoryView`) or a device-level view (`DeviceView`) based on user interaction.
+ * - **Usage Summary**:
+ *   - Provides a high-level summary of energy usage and costs for the selected time period (day or week).
+ * - **Energy Chart**:
+ *   - Visualizes energy usage patterns over time, grouped by category or device.
+ * - **Cost Insights**:
+ *   - Displays detailed cost breakdowns and comparisons for the selected time period.
+ * - **Navigation Controls**:
+ *   - Allows users to navigate between days or weeks and switch between daily and weekly views.
+ * - **Responsive Design**:
+ *   - Adapts to mobile and desktop layouts, ensuring a seamless user experience across devices.
+ *
+ * ## State Management
+ * - `viewType`: Tracks whether the user is viewing data by "day" or "week".
+ * - `currentDate`: Tracks the currently selected date or week.
+ * - `selectedCategory`: Tracks the currently selected category. If `null`, the category-level view is displayed.
+ * - `isMobile`: Tracks whether the application is being viewed on a mobile device.
+ *
+ * ## Props
+ * This component does not accept external props. It uses hooks like `useParams` and `useDeviceData` to fetch and manage data.
+ *
+ * ## Data Flow
+ * - **Device Data**:
+ *   - Fetched using the `useDeviceData` hook, which retrieves energy usage data, metadata, and historical data for the selected participant.
+ * - **Historical Data**:
+ *   - Fetched using the `useHistoricalData` hook to provide comparisons with historical averages.
+ * - **Category and Device Views**:
+ *   - The `CategoryView` is displayed when no category is selected.
+ *   - The `DeviceView` is displayed when a category is selected.
+ * - **Navigation**:
+ *   - The `ViewControls` component allows users to navigate between days or weeks and switch between view types.
+ *
+ * ## Key Components
+ * - **MenuBar**:
+ *   - Provides a sticky navigation bar with breadcrumbs for navigating between categories and devices.
+ * - **ViewControls**:
+ *   - Allows users to navigate between time periods and switch between daily and weekly views.
+ * - **UsageSummary**:
+ *   - Displays a summary of energy usage and costs for the selected time period.
+ * - **CategoryView**:
+ *   - Displays a grid of categories with energy usage and cost summaries.
+ * - **DeviceView**:
+ *   - Displays a grid of devices with detailed energy usage and cost metrics.
+ * - **EnergyChart**:
+ *   - Visualizes energy usage patterns over time.
+ * - **CostInsights**:
+ *   - Provides detailed cost breakdowns and comparisons for the selected time period.
+ *
+ * ## Usage
+ * The `Dashboard` component is typically rendered as the main view of the application:
+ * ```tsx
+ * <Dashboard />
+ * ```
+ *
+ * ## Notes
+ * - The `Dashboard` component uses the `useParams` hook to retrieve the `participantId` from the URL.
+ * - The `useDeviceData` and `useHistoricalData` hooks handle data fetching and state management for device and historical data.
+ * - The `MenuBar` and `ViewControls` components provide navigation and view-switching functionality.
+ * - The `selectedCategory` state determines whether the `CategoryView` or `DeviceView` is displayed.
+ * - The `SOCIAL COMPARISON FEATURE` is currently disabled but can be re-enabled by uncommenting the relevant code.
+ *
+ * ## Dependencies
+ * - **Hooks**:
+ *   - `useDeviceData`: Fetches energy usage data and metadata for devices.
+ *   - `useHistoricalData`: Fetches historical comparison data for devices.
+ * - **Services**:
+ *   - `DeviceCategorizationService`: Groups devices by category.
+ *   - `ParticipantComparisonService`: Provides comparison data for social comparison (currently disabled).
+ * - **Components**:
+ *   - `MenuBar`: Provides navigation and breadcrumbs.
+ *   - `ViewControls`: Allows navigation between time periods and view types.
+ *   - `UsageSummary`: Displays energy usage and cost summaries.
+ *   - `CategoryView`: Displays category-level energy usage and cost summaries.
+ *   - `DeviceView`: Displays device-level energy usage and cost summaries.
+ *   - `EnergyChart`: Visualizes energy usage patterns over time.
+ *   - `CostInsights`: Displays detailed cost breakdowns and comparisons.
+ */
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useParams } from 'react-router-dom';

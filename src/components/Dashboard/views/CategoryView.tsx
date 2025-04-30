@@ -1,3 +1,95 @@
+/**
+ * # CategoryView Component
+ *
+ * The `CategoryView` component provides a high-level overview of energy usage and costs grouped by categories (e.g., Entertainment, Kitchen).
+ * It displays a grid of cards, where each card represents a category and includes metrics such as total energy usage, estimated cost, 
+ * device count, and comparisons with historical averages.
+ *
+ * ## Key Features
+ * - **Category Overview**:
+ *   - Displays total energy usage (in kWh) and estimated cost (£) for each category.
+ *   - Shows the number of devices in each category.
+ * - **Comparison with Historical Averages**:
+ *   - Highlights percentage changes in energy usage compared to historical averages.
+ *   - Uses color coding (green for reductions, red for increases, gray for no change).
+ * - **Interactive Cards**:
+ *   - Each category card is clickable and triggers the `onCategoryClick` callback to navigate to the device-level view for that category.
+ * - **Dynamic Cost Display**:
+ *   - Optionally displays estimated costs based on the `showCost` prop.
+ *
+ * ## Props
+ * - `data`: Array of energy usage readings for the current time period.
+ * - `deviceData`: Metadata for devices, including their names and categories.
+ * - `onCategoryClick`: Callback function triggered when a category card is clicked. Typically used to navigate to the device-level view.
+ * - `getCategoryColor`: Function to retrieve the color associated with a specific category.
+ * - `comparisonData?`: Optional record of comparison metrics for each category, including:
+ *   - `current`: The current energy usage (in kWh).
+ *   - `average`: The historical average energy usage (in kWh).
+ *   - `percentChange`: The percentage change between the current and average usage.
+ * - `viewType?`: Specifies whether the data is for a "day" or "week" view (default: "day").
+ * - `showCost?`: Boolean indicating whether to display estimated costs (default: `true`).
+ *
+ * ## Data Flow
+ * - **Category Data Transformation**:
+ *   - Groups devices by category using `DeviceCategorizationService`.
+ *   - Aggregates energy usage and calculates total costs for each category.
+ * - **Comparison Data**:
+ *   - If `comparisonData` is provided, it is used to calculate percentage changes and highlight trends.
+ * - **Card Interactions**:
+ *   - Clicking a category card triggers the `onCategoryClick` callback, passing the category name.
+ *
+ * ## Usage
+ * This component is used in `Dashboard.tsx` to display a summary of energy usage by category:
+ * ```tsx
+ * <CategoryView
+ *   data={currentData}
+ *   deviceData={deviceMetadata}
+ *   onCategoryClick={(category) => setSelectedCategory(category)}
+ *   getCategoryColor={(category) => categoryColorMap[category]}
+ *   comparisonData={comparisonMetrics}
+ *   viewType="week"
+ *   showCost={true}
+ * />
+ * ```
+ *
+ * ## Integration with `Dashboard.tsx`
+ * - The `CategoryView` component is rendered when no specific category is selected.
+ * - When a category card is clicked, the `onCategoryClick` callback updates the state in `Dashboard.tsx` to display the device-level view for the selected category.
+ * - Example:
+ *   ```tsx
+ *   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+ *
+ *   return (
+ *     <div>
+ *       {selectedCategory ? (
+ *         <DeviceView category={selectedCategory} />
+ *       ) : (
+ *         <CategoryView
+ *           data={currentData}
+ *           deviceData={deviceMetadata}
+ *           onCategoryClick={(category) => setSelectedCategory(category)}
+ *           getCategoryColor={(category) => categoryColorMap[category]}
+ *           comparisonData={comparisonMetrics}
+ *           viewType="week"
+ *           showCost={true}
+ *         />
+ *       )}
+ *     </div>
+ *   );
+ *   ```
+ *
+ * ## Notes
+ * - The `CategoryView` component relies on `DeviceCategorizationService` to group devices by category.
+ * - The `CostEstimationService` is used to calculate estimated costs for each category.
+ * - The `getCategoryColor` function ensures consistent color coding across the dashboard.
+ * - The `comparisonData` prop is optional but enhances the component by providing historical context.
+ *
+ * ## Dependencies
+ * - **DeviceCategorizationService**: Groups devices by category.
+ * - **CostEstimationService**: Calculates estimated costs for energy usage.
+ * - **Card**: A reusable card component from the UI library for displaying category metrics.
+ */
+
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Activity, TrendingUp, TrendingDown, FolderIcon, HomeIcon } from 'lucide-react';

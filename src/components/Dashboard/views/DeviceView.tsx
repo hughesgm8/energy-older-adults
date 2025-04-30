@@ -1,3 +1,99 @@
+/**
+ * # DeviceView Component
+ *
+ * The `DeviceView` component provides a detailed view of energy usage and costs for individual devices within a selected category.
+ * It displays a grid of cards, where each card represents a device and includes metrics such as total energy usage, estimated cost, 
+ * active hours, and comparisons with historical averages.
+ *
+ * ## Key Features
+ * - **Device-Level Insights**:
+ *   - Displays total energy usage (in kWh) and estimated cost (£) for each device.
+ *   - Shows the number of hours the device was active during the selected time period.
+ * - **Comparison with Historical Averages**:
+ *   - Highlights percentage changes in energy usage compared to historical averages.
+ *   - Uses color coding (green for reductions, red for increases, gray for no change).
+ * - **Expandable Cards**:
+ *   - Each device card can be expanded to show additional details, such as category, current usage, and average usage.
+ * - **Dynamic Cost Display**:
+ *   - Optionally displays estimated costs based on the `showCost` prop.
+ *
+ * ## Props
+ * - `deviceData`: Metadata for devices, including their names and categories.
+ * - `data`: Array of energy usage readings for the current time period.
+ * - `selectedCategory`: The currently selected category. Filters devices to show only those in the selected category.
+ * - `participantId?`: The ID of the current participant (optional).
+ * - `viewType`: Specifies whether the data is for a "day" or "week" view.
+ * - `showCost?`: Boolean indicating whether to display estimated costs (default: `true`).
+ *
+ * ## Data Flow
+ * - **Device Data Transformation**:
+ *   - Filters devices by the selected category using `DeviceCategorizationService`.
+ *   - Aggregates energy usage and calculates total costs for each device.
+ * - **Comparison Data**:
+ *   - Fetches historical comparison data using `useHistoricalData` and calculates percentage changes.
+ * - **Card Interactions**:
+ *   - Clicking the expand button on a device card toggles additional details for that device.
+ *
+ * ## Usage
+ * This component is used in `Dashboard.tsx` to display a detailed view of devices within a selected category:
+ * ```tsx
+ * <DeviceView
+ *   deviceData={deviceMetadata}
+ *   data={currentData}
+ *   selectedCategory="Kitchen"
+ *   participantId="P1"
+ *   viewType="week"
+ *   showCost={true}
+ * />
+ * ```
+ *
+ * ## Integration with `Dashboard.tsx`
+ * - The `DeviceView` component is rendered when a specific category is selected.
+ * - The `selectedCategory` prop determines which devices are displayed.
+ * - Example:
+ *   ```tsx
+ *   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+ *
+ *   return (
+ *     <div>
+ *       {selectedCategory ? (
+ *         <DeviceView
+ *           deviceData={deviceMetadata}
+ *           data={currentData}
+ *           selectedCategory={selectedCategory}
+ *           participantId="P1"
+ *           viewType="week"
+ *           showCost={true}
+ *         />
+ *       ) : (
+ *         <CategoryView
+ *           data={currentData}
+ *           deviceData={deviceMetadata}
+ *           onCategoryClick={(category) => setSelectedCategory(category)}
+ *           getCategoryColor={(category) => categoryColorMap[category]}
+ *           comparisonData={comparisonMetrics}
+ *           viewType="week"
+ *           showCost={true}
+ *         />
+ *       )}
+ *     </div>
+ *   );
+ *   ```
+ *
+ * ## Notes
+ * - The `DeviceView` component relies on `DeviceCategorizationService` to filter devices by category.
+ * - The `CostEstimationService` is used to calculate estimated costs for each device.
+ * - The `useHistoricalData` hook fetches historical comparison data for devices.
+ * - The `showCost` prop allows flexibility in displaying cost information.
+ * - The component uses `React.useState` to manage the expanded state of each device card.
+ *
+ * ## Dependencies
+ * - **DeviceCategorizationService**: Groups devices by category.
+ * - **CostEstimationService**: Calculates estimated costs for energy usage.
+ * - **useHistoricalData**: Fetches historical comparison data for devices.
+ * - **Card**: A reusable card component from the UI library for displaying device metrics.
+ */
+
 import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Activity, TrendingDown, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
